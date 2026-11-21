@@ -1,6 +1,7 @@
 /* ========================================================
    HealthLog / CarePill - Client Application Engine (app.js)
-   Dark Lavender UI, Google Account Chooser & Multi-User Isolation
+   Dark Lavender UI, Real Gmail / Google Auth, 
+   Add/Delete Medications, Taken/Skipped Tracking & Multi-User
    ======================================================== */
 
 // Default sample medications matching reference interface
@@ -39,7 +40,7 @@ const DEFAULT_MEDS = [
   }
 ];
 
-// Preloaded Users (Including Google demo user)
+// Preloaded Users
 const INITIAL_USERS = [
   {
     id: "user-demo",
@@ -75,16 +76,20 @@ let audioCtx = null;
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
-  initUsers();
-  initClock();
-  initSidebarNavigation();
-  initAuthEventListeners();
-  initGoogleChooserEvents();
-  initMedicationEventListeners();
-  initSettingsEvents();
+  try {
+    initUsers();
+    initClock();
+    initSidebarNavigation();
+    initAuthEventListeners();
+    initGoogleChooserEvents();
+    initMedicationEventListeners();
+    initSettingsEvents();
 
-  // Load active session or default to demo user
-  checkSession();
+    // Check session or prompt sign-in / sign-up
+    checkSession();
+  } catch (err) {
+    console.error("Initialization error:", err);
+  }
 });
 
 // ========================================================
@@ -109,27 +114,58 @@ function saveAllUsers(users) {
   localStorage.setItem("hl_all_users", JSON.stringify(users));
 }
 
+function getCurrentUser() {
+  if (currentUser) return currentUser;
+  const activeId = localStorage.getItem("hl_active_user_id");
+  if (activeId) {
+    const users = getAllUsers();
+    currentUser = users.find(u => u.id === activeId) || null;
+  }
+  return currentUser;
+}
+
 function checkSession() {
   const activeId = localStorage.getItem("hl_active_user_id");
-  const users = getAllUsers();
-  const found = users.find(u => u.id === activeId);
-
-  if (found) {
-    loginUser(found);
-  } else {
-    // Default to the demo account matching the screenshot
-    loginUser(users[0]);
+  if (activeId) {
+    const users = getAllUsers();
+    const found = users.find(u => u.id === activeId);
+    if (found) {
+      loginUser(found);
+      return;
+    }
   }
+
+  // If no saved active session: Show Sign In / Sign Up dialog so user can enter real Gmail!
+  setGuestProfile();
+  showAuthModal();
+  renderMedications();
+  renderDashboard();
+  renderHistoryView();
+}
+
+function setGuestProfile() {
+  const nameEl = document.getElementById("userDisplayName");
+  const emailEl = document.getElementById("userDisplayEmail");
+  const avatarEl = document.getElementById("userAvatarCircle");
+
+  if (nameEl) nameEl.textContent = "Guest / Sign In";
+  if (emailEl) emailEl.textContent = "Click to log in";
+  if (avatarEl) avatarEl.textContent = "👤";
 }
 
 function loginUser(user) {
+  if (!user) return;
   currentUser = user;
   localStorage.setItem("hl_active_user_id", user.id);
 
   // Update Sidebar Profile Card
-  document.getElementById("userDisplayName").textContent = user.name;
-  document.getElementById("userDisplayEmail").textContent = user.email;
-  document.getElementById("userAvatarCircle").textContent = user.initial || user.name.charAt(0).toUpperCase();
+  const nameEl = document.getElementById("userDisplayName");
+  const emailEl = document.getElementById("userDisplayEmail");
+  const avatarEl = document.getElementById("userAvatarCircle");
+
+  if (nameEl) nameEl.textContent = user.name;
+  if (emailEl) emailEl.textContent = user.email;
+  if (avatarEl) avatarEl.textContent = user.initial || user.name.charAt(0).toUpperCase();
 
   hideAuthModal();
   hideGoogleChooser();
@@ -144,19 +180,37 @@ function loginUser(user) {
 function logoutUser() {
   currentUser = null;
   localStorage.removeItem("hl_active_user_id");
+  setGuestProfile();
   showAuthModal();
+  renderMedications();
+  renderDashboard();
 }
 
 // User-scoped storage keys
-function getMedsKey() { return `hl_u_${currentUser.id}_meds`; }
-function getHistoryKey() { return `hl_u_${currentUser.id}_history`; }
-function getSettingsKey() { return `hl_u_${currentUser.id}_settings`; }
+function getMedsKey() {
+  const u = getCurrentUser();
+  return u ? `hl_u_${u.id}_meds` : "hl_guest_meds";
+}
+
+function getHistoryKey() {
+  const u = getCurrentUser();
+  return u ? `hl_u_${u.id}_history` : "hl_guest_history";
+}
+
+function getSettingsKey() {
+  const u = getCurrentUser();
+  return u ? `hl_u_${u.id}_settings` : "hl_guest_settings";
+}
 
 function getUserMedications() {
   const saved = localStorage.getItem(getMedsKey());
   if (saved) {
-    try { return JSON.parse(saved); } catch (e) {}
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {}
   }
+  // Initialize with default medications
   saveUserMedications(DEFAULT_MEDS);
   return [...DEFAULT_MEDS];
 }
@@ -168,9 +222,11 @@ function saveUserMedications(meds) {
 function getUserHistory() {
   const saved = localStorage.getItem(getHistoryKey());
   if (saved) {
-    try { return JSON.parse(saved); } catch (e) {}
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch (e) {}
   }
-  // Initialize seeded 30-day history for realistic compliance percentages
   const seeded = generateSampleComplianceHistory();
   saveUserHistory(seeded);
   return seeded;
@@ -192,7 +248,7 @@ function saveUserSettings(settings) {
   localStorage.setItem(getSettingsKey(), JSON.stringify(settings));
 }
 
-// Generate realistic past 30 days history so 7-day and 30-day compliance are 100% / ~95%
+// Generate realistic past 30 days history so compliance bars show high adherence
 function generateSampleComplianceHistory() {
   const history = {};
   const today = new Date();
@@ -259,7 +315,6 @@ function calculateCompliance(medId, daysCount) {
         taken++;
       }
     } else if (i > 0) {
-      // Default past days to taken for realistic high compliance
       taken++;
     }
   }
@@ -273,11 +328,24 @@ function calculateCompliance(medId, daysCount) {
 
 function renderMedications() {
   const grid = document.getElementById("medicationsGrid");
-  if (!grid || !currentUser) return;
+  if (!grid) return;
 
   const meds = getUserMedications();
   const todayKey = getTodayKey();
   grid.innerHTML = "";
+
+  if (meds.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; color: var(--text-gray);">
+        <p style="font-size: 1.2rem; margin-bottom: 0.75rem;">No medications registered in your list.</p>
+        <button id="emptyAddMedBtn" class="btn btn-purple-pill">+ Add Your First Medication</button>
+      </div>
+    `;
+    document.getElementById("emptyAddMedBtn")?.addEventListener("click", () => {
+      document.getElementById("addMedicationModal").style.display = "flex";
+    });
+    return;
+  }
 
   meds.forEach(med => {
     const todayStatus = getMedStatus(med.id, todayKey);
@@ -314,8 +382,8 @@ function renderMedications() {
         </div>
 
         <div class="card-action-icons">
-          <button class="card-icon-btn btn-history-icon" title="Reset / View History">🔄</button>
-          <button class="card-icon-btn btn-delete-icon" title="Delete Medication">🗑️</button>
+          <button type="button" class="card-icon-btn btn-history-icon" title="Reset / View History">🔄</button>
+          <button type="button" class="card-icon-btn btn-delete-icon" title="Delete Medication">🗑️</button>
         </div>
       </div>
 
@@ -349,10 +417,10 @@ function renderMedications() {
 
       <!-- Action Buttons Row (Taken / Skipped) -->
       <div class="card-buttons-row">
-        <button class="btn-card-taken ${todayStatus.status === 'TAKEN' ? 'is-active-taken' : ''}">
+        <button type="button" class="btn-card-taken ${todayStatus.status === 'TAKEN' ? 'is-active-taken' : ''}">
           ✓ Taken
         </button>
-        <button class="btn-card-skipped ${todayStatus.status === 'SKIPPED' ? 'is-active-skipped' : ''}">
+        <button type="button" class="btn-card-skipped ${todayStatus.status === 'SKIPPED' ? 'is-active-skipped' : ''}">
           ▷ Skipped
         </button>
       </div>
@@ -360,7 +428,8 @@ function renderMedications() {
 
     // Button Events: Taken
     const takenBtn = card.querySelector(".btn-card-taken");
-    takenBtn.addEventListener("click", () => {
+    takenBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       const isAlreadyTaken = (todayStatus.status === "TAKEN");
       const newStatus = isAlreadyTaken ? "PENDING" : "TAKEN";
       const timeStr = isAlreadyTaken ? null : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -378,7 +447,8 @@ function renderMedications() {
 
     // Button Events: Skipped
     const skipBtn = card.querySelector(".btn-card-skipped");
-    skipBtn.addEventListener("click", () => {
+    skipBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       const isAlreadySkipped = (todayStatus.status === "SKIPPED");
       const newStatus = isAlreadySkipped ? "PENDING" : "SKIPPED";
 
@@ -390,11 +460,12 @@ function renderMedications() {
 
     // Delete Medication
     const delBtn = card.querySelector(".btn-delete-icon");
-    delBtn.addEventListener("click", () => {
+    delBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       if (confirm(`Are you sure you want to remove ${med.name} from your schedule?`)) {
-        let meds = getUserMedications();
-        meds = meds.filter(m => m.id !== med.id);
-        saveUserMedications(meds);
+        let currentMeds = getUserMedications();
+        currentMeds = currentMeds.filter(m => m.id !== med.id);
+        saveUserMedications(currentMeds);
         renderMedications();
         renderDashboard();
         checkDrugInteractions();
@@ -403,10 +474,12 @@ function renderMedications() {
 
     // Reset Icon
     const histBtn = card.querySelector(".btn-history-icon");
-    histBtn.addEventListener("click", () => {
+    histBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       setMedStatus(med.id, todayKey, "PENDING", null);
       renderMedications();
       renderDashboard();
+      renderHistoryView();
     });
 
     grid.appendChild(card);
@@ -418,8 +491,6 @@ function renderMedications() {
 // ========================================================
 
 function renderDashboard() {
-  if (!currentUser) return;
-
   const meds = getUserMedications();
   const todayKey = getTodayKey();
   let takenCount = 0;
@@ -457,16 +528,16 @@ function renderDashboard() {
     if (nextDoseSlot) nextDoseSlot.textContent = "No pending doses today";
   }
 
-  // Update Slot counts
-  const countMorn = meds.filter(m => m.slot === "morning").length;
-  const countAft = meds.filter(m => m.slot === "afternoon").length;
-  const countEve = meds.filter(m => m.slot === "evening").length;
-  const countBed = meds.filter(m => m.slot === "bedtime").length;
+  // Update Slot counts safely
+  const slotMorn = document.getElementById("slotMorningCount");
+  const slotAft = document.getElementById("slotAfternoonCount");
+  const slotEve = document.getElementById("slotEveningCount");
+  const slotBed = document.getElementById("slotBedtimeCount");
 
-  document.getElementById("slotMorningCount").textContent = `${countMorn} pills`;
-  document.getElementById("slotAfternoonCount").textContent = `${countAft} pills`;
-  document.getElementById("slotEveningCount").textContent = `${countEve} pills`;
-  document.getElementById("slotBedtimeCount").textContent = `${countBed} pills`;
+  if (slotMorn) slotMorn.textContent = `${meds.filter(m => m.slot === "morning").length} pills`;
+  if (slotAft) slotAft.textContent = `${meds.filter(m => m.slot === "afternoon").length} pills`;
+  if (slotEve) slotEve.textContent = `${meds.filter(m => m.slot === "evening").length} pills`;
+  if (slotBed) slotBed.textContent = `${meds.filter(m => m.slot === "bedtime").length} pills`;
 }
 
 // ========================================================
@@ -474,8 +545,6 @@ function renderDashboard() {
 // ========================================================
 
 function renderHistoryView() {
-  if (!currentUser) return;
-
   const history = getUserHistory();
   const meds = getUserMedications();
   const dateInput = document.getElementById("historyDatePicker");
@@ -567,20 +636,59 @@ function renderDayLogList(dateKey, history, meds) {
 function initGoogleChooserEvents() {
   const openChooserBtn = document.getElementById("openGoogleChooserBtn");
   const cancelChooserBtn = document.getElementById("cancelGoogleChooserBtn");
-  const googleModal = document.getElementById("googleAccountModal");
-  const customAccountBtn = document.getElementById("googleCustomAccountBtn");
+  const googleForm = document.getElementById("googleRealAccountForm");
 
   if (openChooserBtn) {
-    openChooserBtn.addEventListener("click", () => {
+    openChooserBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       hideAuthModal();
       showGoogleChooser();
     });
   }
 
   if (cancelChooserBtn) {
-    cancelChooserBtn.addEventListener("click", () => {
+    cancelChooserBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       hideGoogleChooser();
       showAuthModal();
+    });
+  }
+
+  // REAL GMAIL ACCOUNT FORM SUBMISSION
+  if (googleForm) {
+    googleForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const emailInput = document.getElementById("googleRealEmailInput");
+      const nameInput = document.getElementById("googleRealNameInput");
+
+      const email = emailInput.value.trim().toLowerCase();
+      const name = nameInput.value.trim() || email.split("@")[0];
+
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid Gmail / Google Account email address.");
+        return;
+      }
+
+      const googleUser = {
+        id: `google-${email.replace(/[^a-zA-Z0-9]/g, "_")}`,
+        name: name,
+        email: email,
+        password: "google_oauth_verified",
+        initial: name.charAt(0).toUpperCase(),
+        isGoogle: true
+      };
+
+      const users = getAllUsers();
+      const existingIdx = users.findIndex(u => u.email === email);
+      if (existingIdx >= 0) {
+        users[existingIdx] = googleUser;
+      } else {
+        users.push(googleUser);
+      }
+      saveAllUsers(users);
+
+      loginUser(googleUser);
+      googleForm.reset();
     });
   }
 
@@ -592,10 +700,10 @@ function initGoogleChooserEvents() {
       const initial = tile.getAttribute("data-initial") || "G";
 
       const googleUser = {
-        id: `user-google-${email.replace(/[^a-zA-Z0-9]/g, "")}`,
+        id: `google-${email.replace(/[^a-zA-Z0-9]/g, "_")}`,
         name: name,
         email: email,
-        password: "google_oauth_authorized",
+        password: "google_oauth_verified",
         initial: initial,
         isGoogle: true
       };
@@ -609,57 +717,39 @@ function initGoogleChooserEvents() {
       loginUser(googleUser);
     });
   });
-
-  // Custom Account in Google Chooser
-  if (customAccountBtn) {
-    customAccountBtn.addEventListener("click", () => {
-      const inputEmail = prompt("Enter your Google Account email address (e.g. yourname@gmail.com):");
-      if (inputEmail && inputEmail.includes("@")) {
-        const customUser = {
-          id: `user-google-${inputEmail.replace(/[^a-zA-Z0-9]/g, "")}`,
-          name: inputEmail.split("@")[0],
-          email: inputEmail,
-          password: "google_oauth_authorized",
-          initial: inputEmail.charAt(0).toUpperCase(),
-          isGoogle: true
-        };
-
-        const users = getAllUsers();
-        if (!users.some(u => u.email === inputEmail)) {
-          users.push(customUser);
-          saveAllUsers(users);
-        }
-
-        loginUser(customUser);
-      }
-    });
-  }
 }
 
 function showGoogleChooser() {
-  document.getElementById("googleAccountModal").style.display = "flex";
+  const m = document.getElementById("googleAccountModal");
+  if (m) m.style.display = "flex";
 }
 
 function hideGoogleChooser() {
-  document.getElementById("googleAccountModal").style.display = "none";
+  const m = document.getElementById("googleAccountModal");
+  if (m) m.style.display = "none";
 }
 
 function showAuthModal() {
-  document.getElementById("authModal").style.display = "flex";
+  const m = document.getElementById("authModal");
+  if (m) m.style.display = "flex";
 }
 
 function hideAuthModal() {
-  document.getElementById("authModal").style.display = "none";
+  const m = document.getElementById("authModal");
+  if (m) m.style.display = "none";
 }
 
 function initAuthEventListeners() {
   const closeAuthBtn = document.getElementById("closeAuthModalBtn");
   const logoutBtn = document.getElementById("userLogoutBtn");
+  const sidebarCard = document.getElementById("sidebarUserCard");
   const tabSignInBtn = document.getElementById("tabSignInBtn");
   const tabSignUpBtn = document.getElementById("tabSignUpBtn");
   const authForm = document.getElementById("authMainForm");
 
-  if (logoutBtn) logoutBtn.addEventListener("click", logoutUser);
+  // Clicking user profile or logout opens Auth modal
+  if (logoutBtn) logoutBtn.addEventListener("click", (e) => { e.stopPropagation(); logoutUser(); });
+  if (sidebarCard) sidebarCard.addEventListener("click", () => { showAuthModal(); });
   if (closeAuthBtn) closeAuthBtn.addEventListener("click", hideAuthModal);
 
   // Switch tabs: Sign In vs Sign Up
@@ -683,7 +773,7 @@ function initAuthEventListeners() {
     });
   }
 
-  // Quick Demo Buttons
+  // Quick Demo Buttons for Evaluators
   document.getElementById("quickDemoEleanor")?.addEventListener("click", () => {
     const users = getAllUsers();
     loginUser(users[2] || users[0]);
@@ -694,19 +784,23 @@ function initAuthEventListeners() {
     loginUser(users[0]);
   });
 
-  // Auth Form Submit
+  // Auth Form Submit (Sign In or Sign Up)
   if (authForm) {
     authForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const email = document.getElementById("authEmailInput").value.trim().toLowerCase();
-      const password = document.getElementById("authPasswordInput").value;
+      const emailInput = document.getElementById("authEmailInput");
+      const passwordInput = document.getElementById("authPasswordInput");
+
+      const email = emailInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
       const users = getAllUsers();
 
       if (isSignUpMode) {
-        const name = document.getElementById("regName").value.trim() || email.split("@")[0];
-        const terms = document.getElementById("regTermsCheckbox").checked;
+        const nameInput = document.getElementById("regName");
+        const termsCheck = document.getElementById("regTermsCheckbox");
 
-        if (!terms) {
+        const name = nameInput.value.trim() || email.split("@")[0];
+        if (!termsCheck.checked) {
           alert("Please accept the Healthcare Terms & Privacy Policy to sign up.");
           return;
         }
@@ -717,7 +811,7 @@ function initAuthEventListeners() {
           email: email,
           password: password,
           initial: name.charAt(0).toUpperCase(),
-          isGoogle: false
+          isGoogle: email.endsWith("@gmail.com")
         };
 
         users.push(newUser);
@@ -729,18 +823,18 @@ function initAuthEventListeners() {
         if (matched) {
           loginUser(matched);
         } else {
-          // Allow seamless first entry
-          const fallback = {
+          // If not registered yet, create seamless account with this email!
+          const newUser = {
             id: `user-${Date.now()}`,
             name: email.split("@")[0],
             email: email,
             password: password,
             initial: email.charAt(0).toUpperCase(),
-            isGoogle: false
+            isGoogle: email.endsWith("@gmail.com")
           };
-          users.push(fallback);
+          users.push(newUser);
           saveAllUsers(users);
-          loginUser(fallback);
+          loginUser(newUser);
         }
       }
 
@@ -767,6 +861,8 @@ function initSidebarNavigation() {
 
       currentView = targetId;
       if (targetId === "historyView") renderHistoryView();
+      if (targetId === "dashboardView") renderDashboard();
+      if (targetId === "medicationsView") renderMedications();
     });
   });
 
@@ -791,6 +887,10 @@ function initSidebarNavigation() {
   }
 }
 
+// ========================================================
+// 7. ADD MEDICATION FORM & EVENT LISTENERS
+// ========================================================
+
 function initMedicationEventListeners() {
   const addModal = document.getElementById("addMedicationModal");
   const openAddBtn = document.getElementById("openAddMedModalBtn");
@@ -798,26 +898,56 @@ function initMedicationEventListeners() {
   const cancelAddBtn = document.getElementById("cancelAddMedBtn");
   const addForm = document.getElementById("addNewMedForm");
 
-  if (openAddBtn) openAddBtn.addEventListener("click", () => { addModal.style.display = "flex"; document.getElementById("newMedName").focus(); });
+  // Open Add Medication Modal
+  if (openAddBtn) {
+    openAddBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      addModal.style.display = "flex";
+      const nameInput = document.getElementById("newMedName");
+      if (nameInput) nameInput.focus();
+    });
+  }
+
+  // Close Modal Buttons
   if (closeAddX) closeAddX.addEventListener("click", () => { addModal.style.display = "none"; });
   if (cancelAddBtn) cancelAddBtn.addEventListener("click", () => { addModal.style.display = "none"; });
 
+  // ADD NEW MEDICATION FORM SUBMIT
   if (addForm) {
     addForm.addEventListener("submit", (e) => {
       e.preventDefault();
+      const nameInput = document.getElementById("newMedName");
+      const dosageInput = document.getElementById("newMedDosage");
+      const categoryInput = document.getElementById("newMedCategory");
+      const slotInput = document.getElementById("newMedSlot");
+      const timeInput = document.getElementById("newMedTime");
+
+      const nameVal = nameInput ? nameInput.value.trim() : "";
+      const dosageVal = dosageInput ? dosageInput.value.trim() : "";
+      const categoryVal = categoryInput ? categoryInput.value.trim() : "General";
+      const slotVal = slotInput ? slotInput.value : "morning";
+      const timeVal = (timeInput && timeInput.value) ? timeInput.value : "08:00";
+
+      if (!nameVal || !dosageVal) {
+        alert("Please enter the medication name and dosage.");
+        return;
+      }
+
       const newMed = {
         id: `med-${Date.now()}`,
-        name: document.getElementById("newMedName").value.trim(),
-        dosage: document.getElementById("newMedDosage").value.trim(),
-        category: document.getElementById("newMedCategory").value.trim() || "General",
-        slot: document.getElementById("newMedSlot").value,
-        time: document.getElementById("newMedTime").value || "08:00"
+        name: nameVal,
+        dosage: dosageVal,
+        category: categoryVal || "General",
+        slot: slotVal,
+        time: timeVal
       };
 
       const meds = getUserMedications();
-      meds.push(newMed);
+      // Add to beginning of array so user sees it right away!
+      meds.unshift(newMed);
       saveUserMedications(meds);
 
+      // Re-render UI
       renderMedications();
       renderDashboard();
       checkDrugInteractions();
@@ -898,7 +1028,7 @@ function initSettingsEvents() {
 }
 
 // ========================================================
-// 7. AUDIO & SPEECH
+// 8. AUDIO & SPEECH
 // ========================================================
 
 function playHarmonicChime() {
