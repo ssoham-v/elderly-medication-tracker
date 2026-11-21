@@ -3,502 +3,500 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CarePill - Elderly Medication & Adherence Assistant</title>
-  <meta name="description" content="Accessible, secure medication schedule and adherence tracker tailored for seniors, caregivers, and families.">
+  <title>HealthLog / CarePill - Medication & Health Schedule Manager</title>
+  <meta name="description" content="Personalized medication tracker, adherence logs, and health schedule management with high accessibility.">
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💊</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💜</text></svg>">
 </head>
-<body data-font-size="normal" data-theme="light">
+<body data-theme="dark" data-font-size="normal">
 
-  <!-- TOP ACCESSIBILITY & USER BAR -->
-  <aside class="a11y-bar" aria-label="Accessibility and account navigation">
-    <div class="container a11y-container">
-      <div class="a11y-left">
-        <span class="a11y-label">Text Size:</span>
-        <div class="font-controls" role="group" aria-label="Text size options">
-          <button id="fontNormalBtn" class="a11y-btn active" title="Standard text size" aria-pressed="true">A</button>
-          <button id="fontLargeBtn" class="a11y-btn" title="Large text size" aria-pressed="false">A+</button>
-          <button id="fontXLargeBtn" class="a11y-btn" title="Extra large text size" aria-pressed="false">A++</button>
-        </div>
-        <button id="quickContrastToggle" class="a11y-btn contrast-btn" aria-label="Toggle high contrast">
-          <span aria-hidden="true">🌓</span> Contrast
-        </button>
-      </div>
-
-      <div class="a11y-right">
-        <!-- Voice Assistant -->
-        <button id="speakTodayBtn" class="a11y-btn voice-btn" title="Read schedule aloud for vision assistance">
-          <span aria-hidden="true">🔊</span> Read Schedule
-        </button>
-        <!-- User Profile / Auth State -->
-        <div id="userProfileBar" class="user-profile-badge">
-          <span class="user-avatar" id="userAvatar">👤</span>
-          <span class="user-name" id="userNameDisplay">Guest</span>
-          <button id="authLogoutBtn" class="a11y-btn btn-logout" title="Sign out of your account">Sign Out</button>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- MAIN APP HEADER & NAVIGATION -->
-  <header class="app-header">
-    <div class="container header-container">
-      <div class="brand-group">
-        <div class="app-logo" aria-hidden="true">💊</div>
-        <div>
-          <h1 class="app-title">CarePill</h1>
-          <p class="app-subtitle">Daily Medication Schedule & Healthcare Assistant</p>
-        </div>
-      </div>
-
-      <!-- Navigation Tabs -->
-      <nav class="main-nav" aria-label="Application sections">
-        <button class="nav-tab active" data-view="dashboardView">
-          <span class="nav-icon" aria-hidden="true">📋</span> Dashboard
-        </button>
-        <button class="nav-tab" data-view="historyView">
-          <span class="nav-icon" aria-hidden="true">📅</span> History & Adherence
-        </button>
-        <button class="nav-tab" data-view="settingsView">
-          <span class="nav-icon" aria-hidden="true">⚙️</span> Settings
-        </button>
-        <button class="nav-tab" data-view="architectureView">
-          <span class="nav-icon" aria-hidden="true">💻</span> Architecture
-        </button>
-      </nav>
-    </div>
-  </header>
-
-  <!-- APP VIEW CONTAINER -->
-  <main class="container main-content">
-
+  <div class="app-layout">
     <!-- ========================================================
-         VIEW 1: DASHBOARD
+         LEFT SIDEBAR (MATCHING THE HEALTHLOG DESIGN)
          ======================================================== -->
-    <section id="dashboardView" class="view-panel active">
-      <!-- Top Date & Live Overview Banner -->
-      <div class="dashboard-hero-card">
-        <div class="hero-top">
-          <div>
-            <span class="hero-label">Today's Schedule Overview</span>
-            <h2 id="todayDateHeading" class="hero-date">Saturday, November 21, 2026</h2>
-          </div>
-          <div class="hero-clock" id="liveClockDisplay">10:00:00 AM</div>
+    <aside class="sidebar" id="sidebar">
+      <!-- App Brand Logo -->
+      <div class="sidebar-brand">
+        <div class="brand-icon-box">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
         </div>
+        <span class="brand-name">HealthLog</span>
+      </div>
 
-        <!-- 3-Column Metrics Overview (No fake streak!) -->
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-icon" aria-hidden="true">📊</div>
-            <div class="metric-details">
-              <span class="metric-title">Today's Adherence</span>
-              <span class="metric-value" id="adherencePercentDisplay">0%</span>
-              <span class="metric-sub" id="adherenceCountSub">0 of 0 taken</span>
-            </div>
-          </div>
-
-          <div class="metric-card highlight">
-            <div class="metric-icon" aria-hidden="true">⏳</div>
-            <div class="metric-details">
-              <span class="metric-title">Pending Doses</span>
-              <span class="metric-value pending-val" id="pendingDosesDisplay">0</span>
-              <span class="metric-sub">remaining for today</span>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-icon" aria-hidden="true">⏰</div>
-            <div class="metric-details">
-              <span class="metric-title">Upcoming Dose</span>
-              <span class="metric-value next-med" id="nextUpcomingDose">None pending</span>
-              <span class="metric-sub" id="nextUpcomingSlot">All caught up</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Daily Progress Bar -->
-        <div class="progress-bar-container">
-          <div class="progress-bar-bg" role="progressbar" id="mainProgressBar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-            <div id="mainProgressBarFill" class="progress-bar-fill" style="width: 0%;"></div>
-          </div>
-        </div>
-
-        <!-- Quick Action Buttons -->
-        <div class="dashboard-actions">
-          <button id="openAddMedBtn" class="btn btn-primary">
-            <span class="btn-icon" aria-hidden="true">➕</span> Add Medication
+      <!-- Navigation Menu -->
+      <div class="sidebar-section">
+        <span class="section-tag">HOME</span>
+        <nav class="nav-menu">
+          <button class="nav-item" data-view="dashboardView">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">Dashboard</span>
           </button>
-          <button id="openEmergencyBtn" class="btn btn-emergency">
-            <span class="btn-icon" aria-hidden="true">🚨</span> Emergency Help (India: 112 / 108)
+
+          <button class="nav-item active" data-view="medicationsView">
+            <span class="nav-icon">💊</span>
+            <span class="nav-text">Medications</span>
+          </button>
+
+          <button class="nav-item" data-view="historyView">
+            <span class="nav-icon">📅</span>
+            <span class="nav-text">Adherence & History</span>
+          </button>
+
+          <button class="nav-item" data-view="insightsView">
+            <span class="nav-icon">💡</span>
+            <span class="nav-text">Insights (Python Engine)</span>
+          </button>
+
+          <button class="nav-item" data-view="architectureView">
+            <span class="nav-icon">💻</span>
+            <span class="nav-text">C++ & Java Core</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Sidebar Bottom Section -->
+      <div class="sidebar-footer">
+        <button class="footer-nav-item" id="openEmergencySidebarBtn">
+          <span class="footer-icon">🚨</span>
+          <span>Emergency (112 / 108)</span>
+        </button>
+
+        <button class="footer-nav-item" id="openSettingsNavBtn">
+          <span class="footer-icon">⚙️</span>
+          <span>Settings</span>
+        </button>
+
+        <!-- User Profile Pill in Sidebar (Exact match to screenshot) -->
+        <div class="sidebar-user-card" id="sidebarUserCard">
+          <div class="user-avatar-circle" id="userAvatarCircle">D</div>
+          <div class="user-info-text">
+            <span class="user-display-name" id="userDisplayName">demo</span>
+            <span class="user-display-email" id="userDisplayEmail">demo@healthlog.app</span>
+          </div>
+          <button class="user-menu-btn" id="userLogoutBtn" title="Sign out / Switch account">
+            ⋮
           </button>
         </div>
       </div>
-
-      <!-- Drug-Drug Safety Alert Box (Dynamic) -->
-      <div id="drugSafetyAlert" class="safety-banner" style="display: none;" role="alert">
-        <span class="safety-icon" aria-hidden="true">⚠️</span>
-        <div class="safety-text" id="drugSafetyText">Drug interaction warning detected.</div>
-      </div>
-
-      <!-- Time Slot Groups -->
-      <div class="schedule-slots-wrapper" aria-label="Medication Slots">
-        <!-- Morning -->
-        <div class="time-slot-card" id="slot-morning">
-          <div class="slot-banner morning">
-            <div class="slot-banner-left">
-              <span class="slot-emoji" aria-hidden="true">🌅</span>
-              <div>
-                <h3>Morning</h3>
-                <span class="slot-window">07:00 AM – 10:00 AM • Breakfast</span>
-              </div>
-            </div>
-            <span class="slot-pill-count" id="count-morning">0 Pills</span>
-          </div>
-          <div class="slot-cards-container" id="cards-morning"></div>
-        </div>
-
-        <!-- Afternoon -->
-        <div class="time-slot-card" id="slot-afternoon">
-          <div class="slot-banner afternoon">
-            <div class="slot-banner-left">
-              <span class="slot-emoji" aria-hidden="true">☀️</span>
-              <div>
-                <h3>Afternoon</h3>
-                <span class="slot-window">12:00 PM – 02:00 PM • Lunch</span>
-              </div>
-            </div>
-            <span class="slot-pill-count" id="count-afternoon">0 Pills</span>
-          </div>
-          <div class="slot-cards-container" id="cards-afternoon"></div>
-        </div>
-
-        <!-- Evening -->
-        <div class="time-slot-card" id="slot-evening">
-          <div class="slot-banner evening">
-            <div class="slot-banner-left">
-              <span class="slot-emoji" aria-hidden="true">🌆</span>
-              <div>
-                <h3>Evening</h3>
-                <span class="slot-window">06:00 PM – 08:00 PM • Dinner</span>
-              </div>
-            </div>
-            <span class="slot-pill-count" id="count-evening">0 Pills</span>
-          </div>
-          <div class="slot-cards-container" id="cards-evening"></div>
-        </div>
-
-        <!-- Bedtime -->
-        <div class="time-slot-card" id="slot-bedtime">
-          <div class="slot-banner bedtime">
-            <div class="slot-banner-left">
-              <span class="slot-emoji" aria-hidden="true">🌙</span>
-              <div>
-                <h3>Bedtime / Night</h3>
-                <span class="slot-window">09:30 PM – 11:00 PM • Before Sleep</span>
-              </div>
-            </div>
-            <span class="slot-pill-count" id="count-bedtime">0 Pills</span>
-          </div>
-          <div class="slot-cards-container" id="cards-bedtime"></div>
-        </div>
-      </div>
-    </section>
-
+    </aside>
 
     <!-- ========================================================
-         VIEW 2: HISTORY & ADHERENCE
+         MAIN CONTENT AREA
          ======================================================== -->
-    <section id="historyView" class="view-panel">
-      <div class="section-card">
-        <div class="section-card-header">
+    <main class="main-viewport">
+      <!-- Top Bar for Quick Accessibility & Audio Assistant -->
+      <header class="top-nav-bar">
+        <div class="top-nav-left">
+          <span class="live-date-pill" id="liveDatePill">Saturday, Nov 21</span>
+          <span class="live-clock-pill" id="liveClockPill">10:00 AM</span>
+        </div>
+
+        <div class="top-nav-right">
+          <button id="voiceSpeakBtn" class="pill-btn voice-pill" title="Read daily schedule aloud">
+            <span>🔊</span> Speak Schedule
+          </button>
+
+          <div class="font-scale-group" role="group" aria-label="Text sizing">
+            <button class="font-pill-btn active" id="fontNormalBtn">A</button>
+            <button class="font-pill-btn" id="fontLargeBtn">A+</button>
+            <button class="font-pill-btn" id="fontXLargeBtn">A++</button>
+          </div>
+
+          <button id="themeToggleBtn" class="pill-btn" title="Toggle theme">
+            <span>🌓</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ========================================================
+           VIEW 1: MEDICATIONS (EXACT MATCH TO USER'S IMAGE)
+           ======================================================== -->
+      <section id="medicationsView" class="page-view active">
+        <!-- Section Header with Title and Purple "+ Add Medication" Button -->
+        <div class="page-header-row">
           <div>
-            <h2>📅 Daily Medication History & Adherence</h2>
-            <p class="section-sub">Inspect past medication logs, verify on-time compliance, and track health patterns.</p>
+            <h1 class="page-title">Medications</h1>
+            <p class="page-subtitle">Daily medication schedules, compliance & intake logs</p>
           </div>
-          <div class="date-selector-box">
-            <label for="historyDateInput"><strong>Select Date:</strong></label>
-            <input type="date" id="historyDateInput" class="custom-date-picker">
+
+          <button id="openAddMedModalBtn" class="btn btn-purple-pill">
+            <span class="plus-icon">+</span> Add Medication
+          </button>
+        </div>
+
+        <!-- Drug Interaction Safety Alert (Dynamic) -->
+        <div id="safetyWarningAlert" class="alert-box-purple" style="display: none;">
+          <span class="alert-icon">⚠️</span>
+          <div id="safetyWarningText" class="alert-content">Safety interaction warning.</div>
+        </div>
+
+        <!-- 2-Column Medication Cards Grid (Exact design from screenshot) -->
+        <div class="med-cards-grid" id="medicationsGrid">
+          <!-- Dynamically populated via app.js -->
+        </div>
+      </section>
+
+      <!-- ========================================================
+           VIEW 2: DASHBOARD (OVERVIEW & REMAINING COUNTER)
+           ======================================================== -->
+      <section id="dashboardView" class="page-view">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Daily Overview</h1>
+            <p class="page-subtitle">Real-time adherence and daily dose tracking</p>
           </div>
         </div>
 
-        <!-- 7-Day Adherence Chart -->
-        <div class="weekly-adherence-card">
-          <h3>📊 Past 7 Days Adherence Overview</h3>
-          <p class="chart-sub">Daily percentage of scheduled medications taken on time.</p>
-          <div class="adherence-chart-bars" id="weeklyChartContainer">
-            <!-- Rendered dynamically via JS -->
+        <div class="metrics-row">
+          <div class="metric-card-dark">
+            <span class="metric-tag">TODAY'S COMPLIANCE</span>
+            <div class="metric-number-purple" id="overviewComplianceNum">0%</div>
+            <span class="metric-desc" id="overviewTakenCount">0 of 0 doses taken</span>
+          </div>
+
+          <div class="metric-card-dark">
+            <span class="metric-tag">PENDING MEDICATIONS</span>
+            <div class="metric-number-purple" id="overviewPendingNum">0</div>
+            <span class="metric-desc">Remaining for today</span>
+          </div>
+
+          <div class="metric-card-dark">
+            <span class="metric-tag">NEXT UPCOMING DOSE</span>
+            <div class="metric-number-purple next-dose" id="overviewNextDose">None</div>
+            <span class="metric-desc" id="overviewNextSlot">All done for today</span>
           </div>
         </div>
 
-        <!-- Selected Day's Log List -->
-        <div class="history-log-section">
-          <div class="history-log-header">
-            <h3 id="selectedDateTitle">Medication Log for Today</h3>
-            <span id="selectedDateSummary" class="badge-status">0% Taken</span>
-          </div>
-          <div id="historyLogList" class="history-log-list">
-            <!-- Rendered dynamically via JS -->
-          </div>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- ========================================================
-         VIEW 3: SETTINGS
-         ======================================================== -->
-    <section id="settingsView" class="view-panel">
-      <div class="section-card">
-        <h2>⚙️ Application Preferences & Health Safety</h2>
-        <p class="section-sub">Personalize your accessibility, audio reminders, and emergency care settings.</p>
-
-        <div class="settings-grid">
-          <!-- Audio & Voice Card -->
-          <div class="setting-group-card">
-            <h3>🔊 Sound & Voice Guidance</h3>
-            
-            <div class="setting-row">
-              <div class="setting-info">
-                <label for="soundToggle" class="setting-title">Harmonic Chime Sound</label>
-                <p class="setting-desc">Plays a pleasant two-tone chime when you mark a pill as taken.</p>
-              </div>
-              <input type="checkbox" id="soundToggle" class="switch-input" checked>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-info">
-                <label for="voiceToggle" class="setting-title">Voice Assistant (Speech Synthesis)</label>
-                <p class="setting-desc">Speaks reminders and confirms medication status aloud for seniors.</p>
-              </div>
-              <input type="checkbox" id="voiceToggle" class="switch-input" checked>
-            </div>
-          </div>
-
-          <!-- Theme & Display Card -->
-          <div class="setting-group-card">
-            <h3>🎨 Appearance & Visual Comfort</h3>
-
-            <div class="setting-row">
-              <div class="setting-info">
-                <label for="themeSelect" class="setting-title">Color Theme</label>
-                <p class="setting-desc">Choose between standard light mode, dark mode, or high-contrast.</p>
-              </div>
-              <select id="themeSelect" class="setting-select">
-                <option value="light">☀️ Light Clean Theme</option>
-                <option value="dark">🌙 Dark Theme</option>
-                <option value="contrast">🌓 High Contrast (WCAG AAA Senior)</option>
-              </select>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-info">
-                <label for="fontSizeSelect" class="setting-title">Default Text Size</label>
-                <p class="setting-desc">Scale typography for relaxed readability without eye strain.</p>
-              </div>
-              <select id="fontSizeSelect" class="setting-select">
-                <option value="normal">Standard Text (18px)</option>
-                <option value="large">Large Text (22px)</option>
-                <option value="xlarge">Extra Large Text (26px)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Emergency Helplines (India) -->
-          <div class="setting-group-card">
-            <h3>🇮🇳 Emergency Helplines (India)</h3>
-            <p class="setting-desc">Standard national emergency helplines integrated into CarePill.</p>
-
-            <ul class="emergency-numbers-list">
-              <li><strong>112</strong> — National All-in-One Emergency Response Support System (ERSS)</li>
-              <li><strong>108</strong> — National Emergency Ambulance / Medical Response</li>
-              <li><strong>102</strong> — Free Maternity and Neonatal Ambulance Service</li>
-              <li><strong>14567</strong> — Elderline (National Senior Citizen Helpline)</li>
-            </ul>
-          </div>
-
-          <!-- Data Management & Isolation -->
-          <div class="setting-group-card danger-zone">
-            <h3>🗑️ Account Data Management</h3>
-            <p class="setting-desc">Your medication schedule is securely isolated to your account. You can reset your schedule anytime.</p>
-            <div class="danger-actions">
-              <button id="resetUserDataBtn" class="btn btn-danger">
-                Reset My Medication Schedule
-              </button>
-            </div>
+        <div class="time-slot-summary-card">
+          <h3 class="card-subtitle-purple">Daily Time-Slot Distribution</h3>
+          <div class="slots-pill-grid">
+            <div class="slot-pill-box">🌅 Morning: <strong id="slotMorningCount">0 pills</strong></div>
+            <div class="slot-pill-box">☀️ Afternoon: <strong id="slotAfternoonCount">0 pills</strong></div>
+            <div class="slot-pill-box">🌆 Evening: <strong id="slotEveningCount">0 pills</strong></div>
+            <div class="slot-pill-box">🌙 Bedtime: <strong id="slotBedtimeCount">0 pills</strong></div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-
-    <!-- ========================================================
-         VIEW 4: MULTI-LANGUAGE ARCHITECTURE
-         ======================================================== -->
-    <section id="architectureView" class="view-panel">
-      <div class="section-card">
-        <h2>💻 Multi-Language System Architecture</h2>
-        <p class="section-sub">
-          CarePill is engineered with an enterprise polyglot architecture combining <strong>HTML5, CSS3, JavaScript, Java 17, C++ 17, and Python 3</strong>.
-        </p>
-
-        <div class="arch-tabs-container">
-          <div class="arch-tab-buttons">
-            <button class="arch-nav-btn active" data-arch="arch-overview">Architecture Overview</button>
-            <button class="arch-nav-btn" data-arch="arch-python">Python 3 (Adherence Analytics)</button>
-            <button class="arch-nav-btn" data-arch="arch-cpp">C++ 17 (Schedule Optimizer)</button>
-            <button class="arch-nav-btn" data-arch="arch-java">Java 17 (Enterprise Scheduler)</button>
+      <!-- ========================================================
+           VIEW 3: HISTORY & 7-DAY ADHERENCE
+           ======================================================== -->
+      <section id="historyView" class="page-view">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Medication History</h1>
+            <p class="page-subtitle">7-Day compliance trends & daily audit records</p>
           </div>
+          <div>
+            <input type="date" id="historyDatePicker" class="dark-date-input">
+          </div>
+        </div>
 
-          <div class="arch-pane active" id="arch-overview">
-            <div class="arch-grid">
-              <div class="arch-box">
-                <h4>🌐 Frontend Presentation (HTML5 & CSS3)</h4>
-                <p>Accessible semantic design with high contrast, WCAG AAA compliance, and fluid responsive cards tailored for seniors.</p>
-              </div>
-              <div class="arch-box">
-                <h4>⚡ Client Runtime Engine (JavaScript ES6+)</h4>
-                <p>Powers the multi-user authentication sandbox, Web Audio harmonic chime generation, and Web Speech API synthesis.</p>
-              </div>
-              <div class="arch-box">
-                <h4>🐍 Analytics & Compliance (Python 3)</h4>
-                <p>Located in <code>python/adherence_analytics.py</code>. Analyzes 7-day adherence trends, identifies missed dose risks, and exports clinical JSON/CSV summaries.</p>
-              </div>
-              <div class="arch-box">
-                <h4>🛡️ High-Performance Safety (C++ 17)</h4>
-                <p>Located in <code>cpp/schedule_optimizer.cpp</code>. Runs sub-millisecond drug contraindication lookups and optimizes time intervals between interacting medications.</p>
-              </div>
-              <div class="arch-box">
-                <h4>☕ Domain & Scheduler Service (Java 17)</h4>
-                <p>Located in <code>java/MedicationScheduler.java</code>. Implements clean OOP scheduling models, recurring cycles, and emergency caregiver notification triggers.</p>
-              </div>
+        <div class="history-card-dark">
+          <h3 class="card-subtitle-purple">Weekly Adherence Overview</h3>
+          <div class="adherence-bars-wrapper" id="historyBarsWrapper">
+            <!-- Dynamically rendered -->
+          </div>
+        </div>
+
+        <div class="history-card-dark">
+          <h3 class="card-subtitle-purple" id="historyDayTitle">Intake Log for Today</h3>
+          <div class="day-log-list" id="dayLogList">
+            <!-- Dynamically rendered -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           VIEW 4: INSIGHTS (PYTHON ENGINE)
+           ======================================================== -->
+      <section id="insightsView" class="page-view">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Clinical Insights & Analytics</h1>
+            <p class="page-subtitle">Powered by Python 3 Engine (<code>python/adherence_analytics.py</code>)</p>
+          </div>
+        </div>
+
+        <div class="history-card-dark">
+          <h3 class="card-subtitle-purple">Statistical Adherence Report</h3>
+          <div class="insights-summary-grid">
+            <div class="insight-box">
+              <span class="insight-label">Clinical Risk Tier</span>
+              <span class="insight-val text-green" id="insightRiskTier">LOW RISK</span>
+            </div>
+            <div class="insight-box">
+              <span class="insight-label">Evaluated Period</span>
+              <span class="insight-val">7 Days</span>
+            </div>
+            <div class="insight-box">
+              <span class="insight-label">Adherence Rate</span>
+              <span class="insight-val" id="insightAdherenceRate">92.8%</span>
             </div>
           </div>
+          <p class="clinical-note" id="insightClinicalNote">
+            Patient demonstrates consistent on-time medication adherence. Recommended routine maintained.
+          </p>
+        </div>
+      </section>
 
-          <div class="arch-pane" id="arch-python">
-            <p><strong>Module:</strong> <code>python/adherence_analytics.py</code></p>
-            <pre class="code-display"><code>class AdherenceAnalyticsEngine:
-    def calculate_compliance_summary(self) -> Dict[str, Any]:
-        total_scheduled = len(self.log_history)
-        total_taken = sum(1 for log in self.log_history if log["status"] == "TAKEN")
-        rate = round((total_taken / total_scheduled) * 100, 2)
-        return {
-            "adherence_rate_pct": rate,
-            "clinical_risk_tier": "LOW_RISK" if rate >= 90 else "MODERATE_RISK"
-        }</code></pre>
+      <!-- ========================================================
+           VIEW 5: C++ & JAVA CORE ARCHITECTURE
+           ======================================================== -->
+      <section id="architectureView" class="page-view">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Polyglot System Architecture</h1>
+            <p class="page-subtitle">High-performance conflict optimization (C++) and OOP scheduler (Java)</p>
           </div>
+        </div>
 
-          <div class="arch-pane" id="arch-cpp">
-            <p><strong>Module:</strong> <code>cpp/schedule_optimizer.cpp</code></p>
-            <pre class="code-display"><code>class ScheduleOptimizer {
-    void runSafetyAndOptimizationAudit() {
-        for (const auto& rule : interactionRules) {
-            if (hasConflict(rule.drugA, rule.drugB)) {
-                int gap = std::abs(medA.scheduledMinutes - medB.scheduledMinutes);
-                if (gap < rule.minSeparationMinutes) {
-                    reschedule(medB, rule.minSeparationMinutes - gap);
-                }
+        <div class="history-card-dark">
+          <div class="arch-code-box">
+            <h4>⚡ C++ 17 Optimization Engine (<code>cpp/schedule_optimizer.cpp</code>)</h4>
+            <pre><code>void runSafetyAndOptimizationAudit() {
+    for (const auto& rule : interactionRules) {
+        if (hasConflict(rule.drugA, rule.drugB)) {
+            int gap = std::abs(medA.scheduledMinutes - medB.scheduledMinutes);
+            if (gap < rule.minSeparationMinutes) {
+                reschedule(medB, rule.minSeparationMinutes - gap);
             }
         }
     }
-};</code></pre>
+}</code></pre>
           </div>
 
-          <div class="arch-pane" id="arch-java">
-            <p><strong>Module:</strong> <code>java/MedicationScheduler.java</code></p>
-            <pre class="code-display"><code>public class MedicationScheduler {
-    public static class MedicationItem {
-        public boolean isOverdue(LocalTime currentTime, int gracePeriodMinutes) {
-            if (isTaken) return false;
-            return currentTime.isAfter(scheduledTime.plusMinutes(gracePeriodMinutes));
+          <div class="arch-code-box" style="margin-top: 1.25rem;">
+            <h4>☕ Java 17 Enterprise Scheduler (<code>java/MedicationScheduler.java</code>)</h4>
+            <pre><code>public class MedicationScheduler {
+    public static class CaregiverNotificationService {
+        public static void dispatchMissedDoseAlert(String caregiverName, MedicationItem med) {
+            System.out.println("Alert: " + caregiverName + " -> " + med.getName() + " overdue.");
         }
     }
 }</code></pre>
           </div>
         </div>
-      </div>
-    </section>
-  </main>
+      </section>
 
-  <!-- APP FOOTER -->
-  <footer class="app-footer">
-    <div class="container footer-content">
-      <p><strong>CarePill Healthcare System</strong> • Engineered for Senior Medication Adherence & Dignity</p>
-      <p class="repo-meta">Single Branch: <code>main</code> • Repository Size: &lt; 100 KB • Public Open-Source</p>
-    </div>
-  </footer>
+      <!-- ========================================================
+           VIEW 6: SETTINGS
+           ======================================================== -->
+      <section id="settingsView" class="page-view">
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">Preferences & Settings</h1>
+            <p class="page-subtitle">Sound, voice guidance, and Indian emergency configuration</p>
+          </div>
+        </div>
 
+        <div class="history-card-dark">
+          <div class="setting-item-row">
+            <div>
+              <strong>Harmonic Chime Sound</strong>
+              <p class="setting-item-sub">Plays two-tone chime upon completing medication</p>
+            </div>
+            <input type="checkbox" id="settingSoundToggle" class="purple-switch" checked>
+          </div>
+
+          <div class="setting-item-row">
+            <div>
+              <strong>Voice Assistant Guidance</strong>
+              <p class="setting-item-sub">Reads aloud reminders via Web Speech API</p>
+            </div>
+            <input type="checkbox" id="settingVoiceToggle" class="purple-switch" checked>
+          </div>
+
+          <div class="setting-item-row">
+            <div>
+              <strong>Reset My Medication Schedule</strong>
+              <p class="setting-item-sub">Restore standard default medications</p>
+            </div>
+            <button id="resetScheduleBtn" class="btn btn-outline-danger">Reset Data</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <!-- ========================================================
-       MODAL: AUTHENTICATION (LOGIN & SIGNUP)
+       MODAL 1: AUTHENTICATION (SIGN IN & SIGN UP WITH GOOGLE)
        ======================================================== -->
-  <div id="authModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="authModalTitle" style="display: none;">
-    <div class="modal-box auth-box">
-      <div class="modal-header">
-        <h2 id="authModalTitle">🔐 Sign In to CarePill</h2>
-        <button id="closeAuthModalBtn" class="close-btn" aria-label="Close dialog">&times;</button>
+  <div id="authModal" class="modal-backdrop" role="dialog" aria-modal="true" style="display: none;">
+    <div class="auth-dialog-card">
+      <div class="auth-dialog-header">
+        <div class="brand-icon-box">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </div>
+        <button id="closeAuthModalBtn" class="modal-close-x" aria-label="Close">&times;</button>
       </div>
 
-      <p class="auth-intro">Sign in to organize your medications and keep your schedule strictly private to your account.</p>
+      <!-- Auth Tabs: Sign In / Sign Up -->
+      <div class="auth-mode-tabs">
+        <button class="auth-tab-btn active" id="tabSignInBtn">Sign In</button>
+        <button class="auth-tab-btn" id="tabSignUpBtn">Create Account (Sign Up)</button>
+      </div>
 
-      <!-- Google 1-Click Sign In -->
-      <button id="authGoogleBtn" class="btn btn-google">
-        <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
+      <!-- PROPER "CONTINUE WITH GOOGLE" BUTTON -->
+      <button id="openGoogleChooserBtn" class="btn-google-auth">
+        <svg class="google-svg" viewBox="0 0 24 24" width="20" height="20">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
-        Continue with Google
+        <span>Continue with Google</span>
       </button>
 
-      <div class="auth-divider"><span>OR WITH EMAIL</span></div>
+      <div class="auth-or-divider"><span>OR CONTINUE WITH EMAIL</span></div>
 
       <!-- Auth Form -->
-      <form id="authForm" class="modal-form">
-        <!-- Signup-only field: Name -->
-        <div class="form-group" id="authNameGroup" style="display: none;">
-          <label for="authName">Full Name <span class="required">*</span></label>
-          <input type="text" id="authName" placeholder="e.g., Eleanor Vance or Rajesh Sharma">
+      <form id="authMainForm" class="auth-form-layout">
+        <!-- Sign Up Only: Full Name -->
+        <div class="form-input-group" id="signUpNameField" style="display: none;">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" placeholder="e.g. Eleanor Vance">
         </div>
 
-        <div class="form-group">
-          <label for="authEmail">Email Address <span class="required">*</span></label>
-          <input type="email" id="authEmail" required placeholder="you@example.com">
+        <div class="form-input-group">
+          <label for="authEmailInput">Email Address</label>
+          <input type="email" id="authEmailInput" required placeholder="name@example.com">
         </div>
 
-        <div class="form-group">
-          <label for="authPassword">Password <span class="required">*</span></label>
-          <input type="password" id="authPassword" required placeholder="••••••••">
+        <div class="form-input-group">
+          <label for="authPasswordInput">Password</label>
+          <input type="password" id="authPasswordInput" required placeholder="••••••••">
         </div>
 
-        <!-- Signup-only: Terms Checkbox -->
-        <div class="form-group terms-group" id="authTermsGroup" style="display: none;">
-          <label class="terms-label">
-            <input type="checkbox" id="authTermsCheck">
-            I agree to the <a href="#privacy" id="termsLink">Healthcare Terms & Privacy Policy</a>
+        <!-- Sign Up Only: Terms Checkbox -->
+        <div class="form-input-group" id="signUpTermsField" style="display: none;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="regTermsCheckbox">
+            <span>I accept the Healthcare Terms & Privacy Policy</span>
           </label>
         </div>
 
-        <div class="auth-helper-row" id="authLoginHelper">
-          <a href="#" id="forgotPasswordBtn" class="auth-link">Forgot password?</a>
-        </div>
-
-        <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width: 100%;">
+        <button type="submit" id="authPrimarySubmitBtn" class="btn btn-purple-submit">
           Sign In
         </button>
+      </form>
 
-        <!-- Quick Demo Profiles for Evaluators -->
-        <div class="demo-profiles-box">
-          <span class="demo-label">Quick Demo Access (Click to try):</span>
-          <div class="demo-buttons">
-            <button type="button" class="btn btn-demo" id="demoEleanorBtn">👤 Eleanor (Senior)</button>
-            <button type="button" class="btn btn-demo" id="demoRajeshBtn">👤 Rajesh (Senior)</button>
+      <!-- Quick Demo Account Access for Evaluators -->
+      <div class="demo-account-pills">
+        <span>Instant Demo Profiles:</span>
+        <div class="demo-pills-row">
+          <button type="button" class="demo-pill-btn" id="quickDemoEleanor">👵 Eleanor</button>
+          <button type="button" class="demo-pill-btn" id="quickDemoRajesh">👴 Rajesh</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================
+       MODAL 2: AUTHENTIC "CHOOSE GOOGLE ACCOUNT" POPUP DIALOG
+       ======================================================== -->
+  <div id="googleAccountModal" class="modal-backdrop" role="dialog" aria-modal="true" style="display: none;">
+    <div class="google-chooser-card">
+      <div class="google-chooser-top">
+        <svg viewBox="0 0 24 24" width="28" height="28">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <h2>Sign in with Google</h2>
+        <p class="google-chooser-sub">Choose an account to continue to <strong>HealthLog</strong></p>
+      </div>
+
+      <div class="google-account-list">
+        <!-- Account Tile 1 -->
+        <button class="google-account-tile" data-name="Sawrav Banerjee" data-email="sawrav.banerjee@gmail.com" data-initial="S">
+          <div class="google-avatar-circle" style="background-color: #7c3aed;">S</div>
+          <div class="google-account-details">
+            <span class="google-tile-name">Sawrav Banerjee</span>
+            <span class="google-tile-email">sawrav.banerjee@gmail.com</span>
+          </div>
+        </button>
+
+        <!-- Account Tile 2 -->
+        <button class="google-account-tile" data-name="Eleanor Vance (Senior Care)" data-email="eleanor.vance@gmail.com" data-initial="E">
+          <div class="google-avatar-circle" style="background-color: #2563eb;">E</div>
+          <div class="google-account-details">
+            <span class="google-tile-name">Eleanor Vance</span>
+            <span class="google-tile-email">eleanor.vance@gmail.com</span>
+          </div>
+        </button>
+
+        <!-- Add Custom Account Tile -->
+        <button class="google-account-tile" id="googleCustomAccountBtn">
+          <div class="google-avatar-circle custom-icon">👤</div>
+          <div class="google-account-details">
+            <span class="google-tile-name">Use another account</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="google-chooser-footer">
+        <p>To continue, Google will share your name, email address, and profile picture with HealthLog.</p>
+        <button id="cancelGoogleChooserBtn" class="btn btn-secondary-google">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================
+       MODAL 3: ADD MEDICATION (PURPLE MODAL)
+       ======================================================== -->
+  <div id="addMedicationModal" class="modal-backdrop" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-dark-box">
+      <div class="modal-header-row">
+        <h2>Add New Medication</h2>
+        <button id="closeAddMedModalX" class="modal-close-x">&times;</button>
+      </div>
+
+      <form id="addNewMedForm" class="dark-form">
+        <div class="form-input-group">
+          <label for="newMedName">Medication Name *</label>
+          <input type="text" id="newMedName" required placeholder="e.g. Magnesium, Ramipril, Metformin">
+        </div>
+
+        <div class="form-grid-2col">
+          <div class="form-input-group">
+            <label for="newMedDosage">Dosage *</label>
+            <input type="text" id="newMedDosage" required placeholder="e.g. 400mg, 5mg, 1 tablet">
+          </div>
+
+          <div class="form-input-group">
+            <label for="newMedCategory">Category Tag</label>
+            <input type="text" id="newMedCategory" placeholder="e.g. Sonstiges, Blood Pressure, Heart">
           </div>
         </div>
 
-        <div class="auth-switch-text">
-          <span id="authSwitchPrompt">Don't have an account?</span>
-          <a href="#" id="authSwitchLink" class="auth-link font-bold">Create an account</a>
+        <div class="form-grid-2col">
+          <div class="form-input-group">
+            <label for="newMedSlot">Daily Time Slot</label>
+            <select id="newMedSlot">
+              <option value="morning">🌅 Morning (08:00 AM)</option>
+              <option value="afternoon">☀️ Afternoon (01:00 PM)</option>
+              <option value="evening">🌆 Evening (07:00 PM)</option>
+              <option value="bedtime">🌙 Bedtime (10:00 PM)</option>
+            </select>
+          </div>
+
+          <div class="form-input-group">
+            <label for="newMedTime">Target Time</label>
+            <input type="time" id="newMedTime" value="08:00">
+          </div>
+        </div>
+
+        <div class="modal-btn-row">
+          <button type="button" id="cancelAddMedBtn" class="btn btn-dark-cancel">Cancel</button>
+          <button type="submit" class="btn btn-purple-pill">Save Medication</button>
         </div>
       </form>
     </div>
@@ -506,129 +504,43 @@
 
 
   <!-- ========================================================
-       MODAL: ADD MEDICATION
+       MODAL 4: EMERGENCY MEDICAL SUPPORT (INDIA)
        ======================================================== -->
-  <div id="addMedModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addMedTitle" style="display: none;">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 id="addMedTitle">➕ Add Medication</h2>
-        <button id="closeAddModalBtn" class="close-btn" aria-label="Close dialog">&times;</button>
+  <div id="emergencyHelpModal" class="modal-backdrop" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-dark-box">
+      <div class="modal-header-row">
+        <h2>🚨 Emergency Medical Contacts (India)</h2>
+        <button id="closeEmergencyHelpX" class="modal-close-x">&times;</button>
       </div>
 
-      <form id="addMedForm" class="modal-form">
-        <div class="form-group">
-          <label for="medName">Medicine Name <span class="required">*</span></label>
-          <input type="text" id="medName" required placeholder="e.g., Metformin, Lisinopril, Aspirin" autocomplete="off">
-          <small class="form-hint">Type clearly as printed on your prescription label.</small>
+      <div class="emergency-items-stack">
+        <div class="emerg-item urgent">
+          <div>
+            <strong>112 — National All-in-One Emergency Response</strong>
+            <p>Ambulance, Fire, Police (ERSS Pan-India)</p>
+          </div>
+          <a href="tel:112" class="btn btn-call-red">📞 Dial 112</a>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="medDosage">Dosage / Quantity <span class="required">*</span></label>
-            <input type="text" id="medDosage" required placeholder="e.g., 500 mg, 1 tablet, 2 drops">
+        <div class="emerg-item urgent">
+          <div>
+            <strong>108 — National Emergency Ambulance</strong>
+            <p>Direct emergency health transport</p>
           </div>
-
-          <div class="form-group">
-            <label for="medSlot">Schedule Slot <span class="required">*</span></label>
-            <select id="medSlot" required>
-              <option value="morning">🌅 Morning (Breakfast)</option>
-              <option value="afternoon">☀️ Afternoon (Lunch)</option>
-              <option value="evening">🌆 Evening (Dinner)</option>
-              <option value="bedtime">🌙 Bedtime (Night)</option>
-            </select>
-          </div>
+          <a href="tel:108" class="btn btn-call-red">📞 Dial 108</a>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="medTime">Scheduled Time</label>
-            <input type="time" id="medTime" value="08:00">
+        <div class="emerg-item">
+          <div>
+            <strong>14567 — Elderline Senior Helpline</strong>
+            <p>National senior citizen helpline by Ministry of Social Justice</p>
           </div>
-
-          <div class="form-group">
-            <label for="medFood">Food Instruction</label>
-            <select id="medFood">
-              <option value="With or after food">🍽️ Take with or after food</option>
-              <option value="Before food (empty stomach)">⏰ Take before food (empty stomach)</option>
-              <option value="With a full glass of water">💧 Drink with a full glass of water</option>
-              <option value="Anytime">✨ Anytime</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="medPurpose">Purpose / Condition</label>
-            <input type="text" id="medPurpose" placeholder="e.g., Diabetes, Blood Pressure, Heart">
-          </div>
-
-          <div class="form-group">
-            <label for="medColor">Pill Badge Color</label>
-            <select id="medColor">
-              <option value="#2563eb">🔵 Blue</option>
-              <option value="#dc2626">🔴 Red</option>
-              <option value="#16a34a">🟢 Green</option>
-              <option value="#d97706">🟠 Orange</option>
-              <option value="#7c3aed">🟣 Purple</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" id="cancelAddModalBtn" class="btn btn-secondary">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save to My Schedule</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-
-  <!-- ========================================================
-       MODAL: EMERGENCY CONTACTS (INDIA)
-       ======================================================== -->
-  <div id="emergencyModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="emergencyTitle" style="display: none;">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 id="emergencyTitle">🚨 Emergency Medical Support (India)</h2>
-        <button id="closeEmergencyModalBtn" class="close-btn" aria-label="Close dialog">&times;</button>
-      </div>
-
-      <div class="emergency-list">
-        <div class="emergency-item urgent">
-          <div class="emergency-info">
-            <span class="emergency-role">National All-in-One Emergency</span>
-            <span class="emergency-desc">Police, Fire, Ambulance (ERSS India)</span>
-          </div>
-          <a href="tel:112" class="btn btn-emergency-dial">📞 Call 112</a>
-        </div>
-
-        <div class="emergency-item urgent">
-          <div class="emergency-info">
-            <span class="emergency-role">Emergency Medical / Ambulance</span>
-            <span class="emergency-desc">National Health Mission Emergency Helpline</span>
-          </div>
-          <a href="tel:108" class="btn btn-emergency-dial">📞 Call 108</a>
-        </div>
-
-        <div class="emergency-item">
-          <div class="emergency-info">
-            <span class="emergency-role">Elder Line (Senior Citizens Helpline)</span>
-            <span class="emergency-desc">National Helpline for Elderly by Ministry of Social Justice</span>
-          </div>
-          <a href="tel:14567" class="btn btn-contact-dial">📞 Call 14567</a>
-        </div>
-
-        <div class="emergency-item">
-          <div class="emergency-info">
-            <span class="emergency-role">Family Caregiver (Personal Emergency Contact)</span>
-            <span class="emergency-desc">+91 98765 43210 • Available 24/7</span>
-          </div>
-          <a href="tel:+919876543210" class="btn btn-contact-dial">📞 Call Caregiver</a>
+          <a href="tel:14567" class="btn btn-call-purple">📞 Dial 14567</a>
         </div>
       </div>
 
-      <div class="modal-actions">
-        <button id="closeEmergencyActionBtn" class="btn btn-primary" style="width: 100%;">Close</button>
+      <div class="modal-btn-row">
+        <button id="closeEmergencyBtnAction" class="btn btn-purple-pill" style="width: 100%;">Close</button>
       </div>
     </div>
   </div>
