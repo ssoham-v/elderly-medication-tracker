@@ -1,50 +1,17 @@
 /* ========================================================
    HealthLog / CarePill - Client Application Engine (app.js)
-   Dark Lavender UI, Real Gmail / Google Auth, 
-   Add/Delete Medications, Taken/Skipped Tracking & Multi-User
+   No Default Meds (Clean Start), Real Gmail / Auth,
+   Interactive Dashboard Calendar & Extended History Calendar
    ======================================================== */
 
-// Default sample medications matching reference interface
-const DEFAULT_MEDS = [
-  {
-    id: "med-magnesium",
-    name: "Magnesium",
-    dosage: "400mg",
-    category: "Supplement",
-    slot: "morning",
-    time: "08:00"
-  },
-  {
-    id: "med-ramipril",
-    name: "Ramipril",
-    dosage: "5mg",
-    category: "Blood Pressure",
-    slot: "morning",
-    time: "08:30"
-  },
-  {
-    id: "med-vitamind3",
-    name: "Vitamin D3",
-    dosage: "2000 IU",
-    category: "Bone Health",
-    slot: "afternoon",
-    time: "13:00"
-  },
-  {
-    id: "med-metformin",
-    name: "Metformin",
-    dosage: "500mg",
-    category: "Blood Sugar",
-    slot: "evening",
-    time: "19:00"
-  }
-];
+// NO DEFAULT MEDICATIONS (Clean slate as requested by user)
+const DEFAULT_MEDS = [];
 
-// Preloaded Users
+// Preloaded Users (For quick switching/demo)
 const INITIAL_USERS = [
   {
     id: "user-demo",
-    name: "demo",
+    name: "Demo Account",
     email: "demo@healthlog.app",
     password: "password123",
     initial: "D",
@@ -57,14 +24,6 @@ const INITIAL_USERS = [
     password: "google_oauth_token",
     initial: "S",
     isGoogle: true
-  },
-  {
-    id: "user-eleanor",
-    name: "Eleanor Vance",
-    email: "eleanor.vance@gmail.com",
-    password: "password123",
-    initial: "E",
-    isGoogle: true
   }
 ];
 
@@ -73,6 +32,12 @@ let currentUser = null;
 let currentView = "medicationsView";
 let isSignUpMode = false;
 let audioCtx = null;
+
+// Calendar State
+let dashCalDate = new Date();       // Month viewed in dashboard
+let histCalDate = new Date();       // Month viewed in history
+let selectedDashDate = getTodayKey();   // Active selected date in dashboard
+let selectedHistDate = getTodayKey();   // Active selected date in history
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
@@ -83,9 +48,10 @@ document.addEventListener("DOMContentLoaded", () => {
     initAuthEventListeners();
     initGoogleChooserEvents();
     initMedicationEventListeners();
+    initCalendarEventListeners();
     initSettingsEvents();
 
-    // Check session or prompt sign-in / sign-up
+    // Check saved session or prompt sign-in
     checkSession();
   } catch (err) {
     console.error("Initialization error:", err);
@@ -135,12 +101,10 @@ function checkSession() {
     }
   }
 
-  // If no saved active session: Show Sign In / Sign Up dialog so user can enter real Gmail!
+  // Not logged in: Show Auth dialog upfront so user can sign in with real Gmail / account
   setGuestProfile();
   showAuthModal();
-  renderMedications();
-  renderDashboard();
-  renderHistoryView();
+  renderAllViews();
 }
 
 function setGuestProfile() {
@@ -148,7 +112,7 @@ function setGuestProfile() {
   const emailEl = document.getElementById("userDisplayEmail");
   const avatarEl = document.getElementById("userAvatarCircle");
 
-  if (nameEl) nameEl.textContent = "Guest / Sign In";
+  if (nameEl) nameEl.textContent = "Sign In / Guest";
   if (emailEl) emailEl.textContent = "Click to log in";
   if (avatarEl) avatarEl.textContent = "👤";
 }
@@ -170,11 +134,7 @@ function loginUser(user) {
   hideAuthModal();
   hideGoogleChooser();
 
-  // Load and render user-specific data
-  renderMedications();
-  renderDashboard();
-  renderHistoryView();
-  checkDrugInteractions();
+  renderAllViews();
 }
 
 function logoutUser() {
@@ -182,8 +142,7 @@ function logoutUser() {
   localStorage.removeItem("hl_active_user_id");
   setGuestProfile();
   showAuthModal();
-  renderMedications();
-  renderDashboard();
+  renderAllViews();
 }
 
 // User-scoped storage keys
@@ -207,12 +166,11 @@ function getUserMedications() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     } catch (e) {}
   }
-  // Initialize with default medications
-  saveUserMedications(DEFAULT_MEDS);
-  return [...DEFAULT_MEDS];
+  // Start with clean empty array (no default medications!)
+  return [];
 }
 
 function saveUserMedications(meds) {
@@ -227,9 +185,8 @@ function getUserHistory() {
       if (parsed && typeof parsed === "object") return parsed;
     } catch (e) {}
   }
-  const seeded = generateSampleComplianceHistory();
-  saveUserHistory(seeded);
-  return seeded;
+  // Clean empty history (no default fake logs!)
+  return {};
 }
 
 function saveUserHistory(history) {
@@ -248,27 +205,6 @@ function saveUserSettings(settings) {
   localStorage.setItem(getSettingsKey(), JSON.stringify(settings));
 }
 
-// Generate realistic past 30 days history so compliance bars show high adherence
-function generateSampleComplianceHistory() {
-  const history = {};
-  const today = new Date();
-
-  for (let i = 29; i >= 1; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateKey = formatDateKey(d);
-
-    history[dateKey] = {
-      "med-magnesium": { status: "TAKEN", time: "20:14" },
-      "med-ramipril": { status: "TAKEN", time: "08:11" },
-      "med-vitamind3": { status: "TAKEN", time: "08:47" },
-      "med-metformin": { status: (i === 4 ? "SKIPPED" : "TAKEN"), time: "19:15" }
-    };
-  }
-
-  return history;
-}
-
 // Date helpers
 function getTodayKey() { return formatDateKey(new Date()); }
 
@@ -277,6 +213,16 @@ function formatDateKey(dateObj) {
   const m = String(dateObj.getMonth() + 1).padStart(2, "0");
   const d = String(dateObj.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+function formatDisplayDate(dateKey) {
+  try {
+    const parts = dateKey.split("-");
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (e) {
+    return dateKey;
+  }
 }
 
 // Get medication state for a specific date
@@ -303,7 +249,7 @@ function calculateCompliance(medId, daysCount) {
   const history = getUserHistory();
   const today = new Date();
   let taken = 0;
-  let totalDays = daysCount;
+  let loggedDays = 0;
 
   for (let i = daysCount - 1; i >= 0; i--) {
     const d = new Date(today);
@@ -311,15 +257,24 @@ function calculateCompliance(medId, daysCount) {
     const dateKey = formatDateKey(d);
 
     if (history[dateKey] && history[dateKey][medId]) {
+      loggedDays++;
       if (history[dateKey][medId].status === "TAKEN") {
         taken++;
       }
-    } else if (i > 0) {
-      taken++;
     }
   }
 
-  return Math.round((taken / totalDays) * 100);
+  if (loggedDays === 0) return 0;
+  return Math.round((taken / loggedDays) * 100);
+}
+
+function renderAllViews() {
+  renderMedications();
+  renderDashboard();
+  renderDashboardCalendar();
+  renderHistoryCalendar();
+  renderHistoryDayLog(selectedHistDate);
+  checkDrugInteractions();
 }
 
 // ========================================================
@@ -336,13 +291,20 @@ function renderMedications() {
 
   if (meds.length === 0) {
     grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; color: var(--text-gray);">
-        <p style="font-size: 1.2rem; margin-bottom: 0.75rem;">No medications registered in your list.</p>
-        <button id="emptyAddMedBtn" class="btn btn-purple-pill">+ Add Your First Medication</button>
+      <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1.5rem; background-color: var(--bg-card); border: 1px dashed var(--border-subtle); border-radius: var(--radius-lg);">
+        <div style="font-size: 3rem; margin-bottom: 0.75rem;">💊</div>
+        <h3 style="font-size: 1.4rem; color: #ffffff; margin-bottom: 0.5rem;">No medications scheduled yet</h3>
+        <p style="color: var(--text-gray); margin-bottom: 1.5rem; max-width: 440px; margin-left: auto; margin-right: auto;">
+          Add your daily prescriptions, supplements, and timing schedules to start tracking adherence.
+        </p>
+        <button type="button" id="emptyAddMedBtn" class="btn btn-purple-pill">
+          <span class="plus-icon">+</span> Add Your First Medication
+        </button>
       </div>
     `;
     document.getElementById("emptyAddMedBtn")?.addEventListener("click", () => {
       document.getElementById("addMedicationModal").style.display = "flex";
+      document.getElementById("newMedName")?.focus();
     });
     return;
   }
@@ -357,15 +319,6 @@ function renderMedications() {
       lastIntakeLabel = `Today, ${todayStatus.time || '08:00 AM'}`;
     } else if (todayStatus.status === "SKIPPED") {
       lastIntakeLabel = "Skipped today";
-    } else {
-      // Check yesterday
-      const yDate = new Date();
-      yDate.setDate(yDate.getDate() - 1);
-      const yKey = formatDateKey(yDate);
-      const yStatus = getMedStatus(med.id, yKey);
-      if (yStatus.status === "TAKEN") {
-        lastIntakeLabel = `Yesterday, ${yStatus.time || '08:14 PM'}`;
-      }
     }
 
     const card = document.createElement("article");
@@ -382,7 +335,7 @@ function renderMedications() {
         </div>
 
         <div class="card-action-icons">
-          <button type="button" class="card-icon-btn btn-history-icon" title="Reset / View History">🔄</button>
+          <button type="button" class="card-icon-btn btn-history-icon" title="Reset Today's Status">🔄</button>
           <button type="button" class="card-icon-btn btn-delete-icon" title="Delete Medication">🗑️</button>
         </div>
       </div>
@@ -426,7 +379,7 @@ function renderMedications() {
       </div>
     `;
 
-    // Button Events: Taken
+    // Taken Action
     const takenBtn = card.querySelector(".btn-card-taken");
     takenBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -440,12 +393,10 @@ function renderMedications() {
         speakVoice(`${med.name} marked as taken.`);
       }
 
-      renderMedications();
-      renderDashboard();
-      renderHistoryView();
+      renderAllViews();
     });
 
-    // Button Events: Skipped
+    // Skipped Action
     const skipBtn = card.querySelector(".btn-card-skipped");
     skipBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -453,9 +404,7 @@ function renderMedications() {
       const newStatus = isAlreadySkipped ? "PENDING" : "SKIPPED";
 
       setMedStatus(med.id, todayKey, newStatus, null);
-      renderMedications();
-      renderDashboard();
-      renderHistoryView();
+      renderAllViews();
     });
 
     // Delete Medication
@@ -466,9 +415,7 @@ function renderMedications() {
         let currentMeds = getUserMedications();
         currentMeds = currentMeds.filter(m => m.id !== med.id);
         saveUserMedications(currentMeds);
-        renderMedications();
-        renderDashboard();
-        checkDrugInteractions();
+        renderAllViews();
       }
     });
 
@@ -477,9 +424,7 @@ function renderMedications() {
     histBtn.addEventListener("click", (e) => {
       e.preventDefault();
       setMedStatus(med.id, todayKey, "PENDING", null);
-      renderMedications();
-      renderDashboard();
-      renderHistoryView();
+      renderAllViews();
     });
 
     grid.appendChild(card);
@@ -492,12 +437,12 @@ function renderMedications() {
 
 function renderDashboard() {
   const meds = getUserMedications();
-  const todayKey = getTodayKey();
+  const dateKey = selectedDashDate || getTodayKey();
   let takenCount = 0;
   let nextMed = null;
 
   meds.forEach(med => {
-    const s = getMedStatus(med.id, todayKey);
+    const s = getMedStatus(med.id, dateKey);
     if (s.status === "TAKEN") {
       takenCount++;
     } else if (!nextMed && s.status !== "SKIPPED") {
@@ -517,18 +462,23 @@ function renderDashboard() {
   const nextDoseSlot = document.getElementById("overviewNextSlot");
 
   if (compNum) compNum.textContent = `${percent}%`;
-  if (takenDesc) takenDesc.textContent = `${takenCount} of ${total} doses taken`;
+  if (takenDesc) {
+    const isToday = (dateKey === getTodayKey());
+    takenDesc.textContent = total > 0 
+      ? `${takenCount} of ${total} doses taken (${isToday ? 'Today' : dateKey})`
+      : "No medications scheduled yet";
+  }
   if (pendingNum) pendingNum.textContent = pending;
 
   if (nextMed) {
     if (nextDoseVal) nextDoseVal.textContent = nextMed.name;
     if (nextDoseSlot) nextDoseSlot.textContent = `${nextMed.dosage} • ${capitalize(nextMed.slot)}`;
   } else {
-    if (nextDoseVal) nextDoseVal.textContent = "All Done! 🎉";
-    if (nextDoseSlot) nextDoseSlot.textContent = "No pending doses today";
+    if (nextDoseVal) nextDoseVal.textContent = total > 0 ? "All Done! 🎉" : "None";
+    if (nextDoseSlot) nextDoseSlot.textContent = total > 0 ? "No pending doses" : "Add medication to begin";
   }
 
-  // Update Slot counts safely
+  // Update Slot counts
   const slotMorn = document.getElementById("slotMorningCount");
   const slotAft = document.getElementById("slotAfternoonCount");
   const slotEve = document.getElementById("slotEveningCount");
@@ -541,78 +491,201 @@ function renderDashboard() {
 }
 
 // ========================================================
-// 4. HISTORY VIEW & 7-DAY BARS
+// 4. INTERACTIVE CALENDAR GENERATOR (DASHBOARD & HISTORY)
 // ========================================================
 
-function renderHistoryView() {
-  const history = getUserHistory();
-  const meds = getUserMedications();
-  const dateInput = document.getElementById("historyDatePicker");
+function generateCalendarDays(viewDate) {
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
 
-  if (dateInput && !dateInput.value) {
-    dateInput.value = getTodayKey();
+  // First day of month (0 = Sun, 1 = Mon...)
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  // Total days in current month
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  const days = [];
+
+  // Empty padding cells before first day
+  for (let i = 0; i < firstDayIndex; i++) {
+    days.push({ empty: true });
   }
 
-  const selectedDate = dateInput ? dateInput.value : getTodayKey();
-  renderHistoryBars(history, meds);
-  renderDayLogList(selectedDate, history, meds);
+  // Actual day cells
+  for (let day = 1; day <= totalDays; day++) {
+    const d = new Date(year, month, day);
+    const dateKey = formatDateKey(d);
+    days.push({
+      empty: false,
+      dayNum: day,
+      dateKey: dateKey
+    });
+  }
+
+  return days;
 }
 
-function renderHistoryBars(history, meds) {
-  const container = document.getElementById("historyBarsWrapper");
-  if (!container) return;
-  container.innerHTML = "";
+function getDayAdherenceStatus(dateKey, meds, history) {
+  if (meds.length === 0 || !history[dateKey]) return null;
 
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const today = new Date();
-  const totalMeds = meds.length;
+  let taken = 0;
+  let skipped = 0;
+  let logged = 0;
 
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dKey = formatDateKey(d);
-    const dayName = i === 0 ? "Today" : daysOfWeek[d.getDay()];
+  meds.forEach(m => {
+    if (history[dateKey][m.id]) {
+      logged++;
+      if (history[dateKey][m.id].status === "TAKEN") taken++;
+      if (history[dateKey][m.id].status === "SKIPPED") skipped++;
+    }
+  });
 
-    let taken = 0;
-    if (history[dKey]) {
-      meds.forEach(m => {
-        if (history[dKey][m.id] && history[dKey][m.id].status === "TAKEN") taken++;
-      });
+  if (logged === 0) return null;
+  if (taken === meds.length) return "ALL_TAKEN";
+  if (taken > 0) return "PARTIAL";
+  if (skipped > 0) return "MISSED";
+  return null;
+}
+
+// Render Dashboard Mini-Calendar
+function renderDashboardCalendar() {
+  const grid = document.getElementById("dashCalGrid");
+  const monthTitle = document.getElementById("dashCalMonthYear");
+  if (!grid || !monthTitle) return;
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  monthTitle.textContent = `${monthNames[dashCalDate.getMonth()]} ${dashCalDate.getFullYear()}`;
+
+  grid.innerHTML = "";
+  const days = generateCalendarDays(dashCalDate);
+  const meds = getUserMedications();
+  const history = getUserHistory();
+  const todayKey = getTodayKey();
+
+  days.forEach(item => {
+    const cell = document.createElement("div");
+    if (item.empty) {
+      cell.className = "cal-day-cell empty-day";
+      grid.appendChild(cell);
+      return;
     }
 
-    const pct = totalMeds > 0 ? Math.round((taken / totalMeds) * 100) : 0;
+    const isToday = (item.dateKey === todayKey);
+    const isSelected = (item.dateKey === selectedDashDate);
+    const status = getDayAdherenceStatus(item.dateKey, meds, history);
 
-    const col = document.createElement("div");
-    col.className = "bar-col";
-    col.innerHTML = `
-      <span class="bar-pct">${pct}%</span>
-      <div class="bar-track">
-        <div class="bar-fill" style="height: ${pct}%;"></div>
-      </div>
-      <span class="bar-day-name">${dayName}</span>
+    cell.className = `cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}`;
+    cell.setAttribute("data-date", item.dateKey);
+
+    let pipHtml = "";
+    if (status === "ALL_TAKEN") pipHtml = `<span class="status-pip pip-green" title="All taken"></span>`;
+    else if (status === "PARTIAL") pipHtml = `<span class="status-pip pip-amber" title="Partially taken"></span>`;
+    else if (status === "MISSED") pipHtml = `<span class="status-pip pip-red" title="Skipped/Missed"></span>`;
+
+    cell.innerHTML = `
+      <span class="day-num">${item.dayNum}</span>
+      <div class="day-dots-row">${pipHtml}</div>
     `;
-    container.appendChild(col);
-  }
+
+    cell.addEventListener("click", () => {
+      selectedDashDate = item.dateKey;
+      renderDashboard();
+      renderDashboardCalendar();
+    });
+
+    grid.appendChild(cell);
+  });
 }
 
-function renderDayLogList(dateKey, history, meds) {
+// Render Extended History Calendar
+function renderHistoryCalendar() {
+  const grid = document.getElementById("histCalGrid");
+  const monthTitle = document.getElementById("histCalMonthYear");
+  if (!grid || !monthTitle) return;
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  monthTitle.textContent = `${monthNames[histCalDate.getMonth()]} ${histCalDate.getFullYear()}`;
+
+  grid.innerHTML = "";
+  const days = generateCalendarDays(histCalDate);
+  const meds = getUserMedications();
+  const history = getUserHistory();
+  const todayKey = getTodayKey();
+
+  days.forEach(item => {
+    const cell = document.createElement("div");
+    if (item.empty) {
+      cell.className = "cal-day-cell empty-day";
+      grid.appendChild(cell);
+      return;
+    }
+
+    const isToday = (item.dateKey === todayKey);
+    const isSelected = (item.dateKey === selectedHistDate);
+    const status = getDayAdherenceStatus(item.dateKey, meds, history);
+
+    cell.className = `cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}`;
+    cell.setAttribute("data-date", item.dateKey);
+
+    let pipHtml = "";
+    if (status === "ALL_TAKEN") pipHtml = `<span class="status-pip pip-green"></span>`;
+    else if (status === "PARTIAL") pipHtml = `<span class="status-pip pip-amber"></span>`;
+    else if (status === "MISSED") pipHtml = `<span class="status-pip pip-red"></span>`;
+
+    cell.innerHTML = `
+      <span class="day-num">${item.dayNum}</span>
+      <div class="day-dots-row">${pipHtml}</div>
+    `;
+
+    cell.addEventListener("click", () => {
+      selectedHistDate = item.dateKey;
+      renderHistoryCalendar();
+      renderHistoryDayLog(selectedHistDate);
+    });
+
+    grid.appendChild(cell);
+  });
+}
+
+// Render Selected Day's Log List in History View
+function renderHistoryDayLog(dateKey) {
   const container = document.getElementById("dayLogList");
   const title = document.getElementById("historyDayTitle");
+  const badge = document.getElementById("historyDayBadge");
   if (!container) return;
 
   const isToday = (dateKey === getTodayKey());
-  if (title) title.textContent = isToday ? "Intake Log for Today" : `Intake Log for ${dateKey}`;
+  if (title) {
+    title.textContent = isToday ? "Intake Log for Today" : `Intake Log for ${formatDisplayDate(dateKey)}`;
+  }
 
+  const meds = getUserMedications();
+  const history = getUserHistory();
   container.innerHTML = "";
+
   if (meds.length === 0) {
-    container.innerHTML = `<div style="color: var(--text-muted); padding: 1rem;">No medications registered.</div>`;
+    container.innerHTML = `
+      <div style="color: var(--text-gray); padding: 1.5rem; text-align: center;">
+        No medications added to your schedule.
+      </div>
+    `;
+    if (badge) badge.textContent = "0 scheduled";
     return;
   }
+
+  let takenCount = 0;
 
   meds.forEach(med => {
     const st = (history[dateKey] && history[dateKey][med.id]) 
       ? history[dateKey][med.id] 
       : { status: "PENDING", time: null };
+
+    if (st.status === "TAKEN") takenCount++;
 
     const item = document.createElement("div");
     item.className = `day-log-item ${st.status === 'TAKEN' ? 'taken' : st.status === 'SKIPPED' ? 'skipped' : ''}`;
@@ -622,10 +695,53 @@ function renderDayLogList(dateKey, history, meds) {
         <div style="font-size: 0.85rem; color: var(--text-gray);">${capitalize(med.slot)} • Target ${med.time}</div>
       </div>
       <div style="font-weight: 700;">
-        ${st.status === 'TAKEN' ? `✅ Taken at ${st.time || 'on time'}` : st.status === 'SKIPPED' ? `▷ Skipped` : `⏳ Pending`}
+        ${st.status === 'TAKEN' ? `✅ Taken at ${st.time || 'on time'}` : st.status === 'SKIPPED' ? `▷ Skipped` : `⏳ Pending / Untaken`}
       </div>
     `;
     container.appendChild(item);
+  });
+
+  if (badge) {
+    badge.textContent = `${takenCount} of ${meds.length} taken`;
+  }
+}
+
+// Calendar Navigation Events
+function initCalendarEventListeners() {
+  // Dashboard Calendar Nav
+  document.getElementById("dashCalPrevBtn")?.addEventListener("click", () => {
+    dashCalDate.setMonth(dashCalDate.getMonth() - 1);
+    renderDashboardCalendar();
+  });
+
+  document.getElementById("dashCalNextBtn")?.addEventListener("click", () => {
+    dashCalDate.setMonth(dashCalDate.getMonth() + 1);
+    renderDashboardCalendar();
+  });
+
+  document.getElementById("dashCalTodayBtn")?.addEventListener("click", () => {
+    dashCalDate = new Date();
+    selectedDashDate = getTodayKey();
+    renderDashboard();
+    renderDashboardCalendar();
+  });
+
+  // History Calendar Nav
+  document.getElementById("histCalPrevBtn")?.addEventListener("click", () => {
+    histCalDate.setMonth(histCalDate.getMonth() - 1);
+    renderHistoryCalendar();
+  });
+
+  document.getElementById("histCalNextBtn")?.addEventListener("click", () => {
+    histCalDate.setMonth(histCalDate.getMonth() + 1);
+    renderHistoryCalendar();
+  });
+
+  document.getElementById("histCalTodayBtn")?.addEventListener("click", () => {
+    histCalDate = new Date();
+    selectedHistDate = getTodayKey();
+    renderHistoryCalendar();
+    renderHistoryDayLog(selectedHistDate);
   });
 }
 
@@ -661,8 +777,8 @@ function initGoogleChooserEvents() {
       const emailInput = document.getElementById("googleRealEmailInput");
       const nameInput = document.getElementById("googleRealNameInput");
 
-      const email = emailInput.value.trim().toLowerCase();
-      const name = nameInput.value.trim() || email.split("@")[0];
+      const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
+      const name = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : email.split("@")[0];
 
       if (!email || !email.includes("@")) {
         alert("Please enter a valid Gmail / Google Account email address.");
@@ -776,7 +892,7 @@ function initAuthEventListeners() {
   // Quick Demo Buttons for Evaluators
   document.getElementById("quickDemoEleanor")?.addEventListener("click", () => {
     const users = getAllUsers();
-    loginUser(users[2] || users[0]);
+    loginUser(users[0]);
   });
 
   document.getElementById("quickDemoRajesh")?.addEventListener("click", () => {
@@ -823,7 +939,7 @@ function initAuthEventListeners() {
         if (matched) {
           loginUser(matched);
         } else {
-          // If not registered yet, create seamless account with this email!
+          // If not registered yet, create account with this email!
           const newUser = {
             id: `user-${Date.now()}`,
             name: email.split("@")[0],
@@ -844,7 +960,7 @@ function initAuthEventListeners() {
 }
 
 // ========================================================
-// 6. SIDEBAR NAVIGATION & MODALS
+// 6. SIDEBAR NAVIGATION
 // ========================================================
 
 function initSidebarNavigation() {
@@ -860,9 +976,7 @@ function initSidebarNavigation() {
       if (panel) panel.classList.add("active");
 
       currentView = targetId;
-      if (targetId === "historyView") renderHistoryView();
-      if (targetId === "dashboardView") renderDashboard();
-      if (targetId === "medicationsView") renderMedications();
+      renderAllViews();
     });
   });
 
@@ -929,7 +1043,7 @@ function initMedicationEventListeners() {
       const timeVal = (timeInput && timeInput.value) ? timeInput.value : "08:00";
 
       if (!nameVal || !dosageVal) {
-        alert("Please enter the medication name and dosage.");
+        alert("Please enter both the medication name and dosage.");
         return;
       }
 
@@ -948,20 +1062,12 @@ function initMedicationEventListeners() {
       saveUserMedications(meds);
 
       // Re-render UI
-      renderMedications();
-      renderDashboard();
-      checkDrugInteractions();
+      renderAllViews();
 
       addForm.reset();
       addModal.style.display = "none";
       speakVoice(`${newMed.name} added to schedule.`);
     });
-  }
-
-  // History date picker change
-  const datePicker = document.getElementById("historyDatePicker");
-  if (datePicker) {
-    datePicker.addEventListener("change", () => renderHistoryView());
   }
 }
 
@@ -990,13 +1096,11 @@ function initSettingsEvents() {
   const resetBtn = document.getElementById("resetScheduleBtn");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
-      if (confirm("Are you sure you want to reset your medication schedule to standard defaults?")) {
-        saveUserMedications(DEFAULT_MEDS);
+      if (confirm("Are you sure you want to clear your medication schedule?")) {
+        saveUserMedications([]);
         saveUserHistory({});
-        renderMedications();
-        renderDashboard();
-        renderHistoryView();
-        alert("Medication schedule reset to defaults.");
+        renderAllViews();
+        alert("Medication schedule cleared.");
       }
     });
   }
@@ -1006,7 +1110,9 @@ function initSettingsEvents() {
     const meds = getUserMedications();
     const todayKey = getTodayKey();
     const untaken = meds.filter(m => getMedStatus(m.id, todayKey).status !== "TAKEN");
-    if (untaken.length === 0) {
+    if (meds.length === 0) {
+      speakVoice("You have no medications scheduled.");
+    } else if (untaken.length === 0) {
       speakVoice("All scheduled medications for today have been taken.");
     } else {
       speakVoice(`You have ${untaken.length} medications remaining today: ${untaken.map(m => m.name).join(", ")}.`);

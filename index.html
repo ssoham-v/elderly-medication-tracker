@@ -169,6 +169,33 @@
           </div>
         </div>
 
+        <!-- Interactive Dashboard Calendar Widget -->
+        <div class="calendar-panel-card">
+          <div class="cal-header-row">
+            <div class="cal-title-group">
+              <span class="cal-badge-icon">📅</span>
+              <div>
+                <h3 id="dashCalMonthYear" class="cal-month-title">November 2026</h3>
+                <span class="cal-hint-sub">Click any date to view and track your schedule</span>
+              </div>
+            </div>
+            <div class="cal-controls-group">
+              <button type="button" class="btn-cal-nav" id="dashCalPrevBtn" title="Previous Month">◀</button>
+              <button type="button" class="btn-cal-today" id="dashCalTodayBtn">Today</button>
+              <button type="button" class="btn-cal-nav" id="dashCalNextBtn" title="Next Month">▶</button>
+            </div>
+          </div>
+
+          <div class="calendar-wrapper">
+            <div class="cal-weekdays-row">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="cal-days-grid" id="dashCalGrid">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+        </div>
+
         <div class="time-slot-summary-card">
           <h3 class="card-subtitle-purple">Daily Time-Slot Distribution</h3>
           <div class="slots-pill-grid">
@@ -181,28 +208,57 @@
       </section>
 
       <!-- ========================================================
-           VIEW 3: HISTORY & 7-DAY ADHERENCE
+           VIEW 3: HISTORY & EXTENDED CALENDAR
            ======================================================== -->
       <section id="historyView" class="page-view">
         <div class="page-header-row">
           <div>
             <h1 class="page-title">Medication History</h1>
-            <p class="page-subtitle">7-Day compliance trends & daily audit records</p>
-          </div>
-          <div>
-            <input type="date" id="historyDatePicker" class="dark-date-input">
+            <p class="page-subtitle">Extended daily calendar & historical adherence audit</p>
           </div>
         </div>
 
-        <div class="history-card-dark">
-          <h3 class="card-subtitle-purple">Weekly Adherence Overview</h3>
-          <div class="adherence-bars-wrapper" id="historyBarsWrapper">
-            <!-- Dynamically rendered -->
+        <!-- Extended Full Month Calendar -->
+        <div class="calendar-panel-card extended-card">
+          <div class="cal-header-row">
+            <div class="cal-title-group">
+              <span class="cal-badge-icon">🗓️</span>
+              <div>
+                <h3 id="histCalMonthYear" class="cal-month-title">November 2026</h3>
+                <span class="cal-hint-sub">Monthly overview: Track taken, skipped, and missed doses day by day</span>
+              </div>
+            </div>
+            <div class="cal-controls-group">
+              <button type="button" class="btn-cal-nav" id="histCalPrevBtn" title="Previous Month">◀</button>
+              <button type="button" class="btn-cal-today" id="histCalTodayBtn">Today</button>
+              <button type="button" class="btn-cal-nav" id="histCalNextBtn" title="Next Month">▶</button>
+            </div>
+          </div>
+
+          <!-- Calendar Status Legend -->
+          <div class="cal-legend-bar">
+            <span class="legend-chip"><span class="dot-indicator green"></span> All Taken (100%)</span>
+            <span class="legend-chip"><span class="dot-indicator amber"></span> Partial Doses</span>
+            <span class="legend-chip"><span class="dot-indicator red"></span> Missed / Skipped</span>
+            <span class="legend-chip"><span class="dot-indicator purple"></span> Selected Date</span>
+          </div>
+
+          <div class="calendar-wrapper">
+            <div class="cal-weekdays-row">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="cal-days-grid extended-grid" id="histCalGrid">
+              <!-- Dynamically populated via JS -->
+            </div>
           </div>
         </div>
 
+        <!-- Selected Date Intake Log List -->
         <div class="history-card-dark">
-          <h3 class="card-subtitle-purple" id="historyDayTitle">Intake Log for Today</h3>
+          <div class="card-header-row" style="margin-bottom: 1rem;">
+            <h3 class="card-subtitle-purple" id="historyDayTitle" style="margin-bottom: 0;">Intake Log for Today</h3>
+            <span id="historyDayBadge" class="med-category-pill" style="font-size: 0.9rem; padding: 0.3rem 0.8rem;">0 of 0 taken</span>
+          </div>
           <div class="day-log-list" id="dayLogList">
             <!-- Dynamically rendered -->
           </div>
