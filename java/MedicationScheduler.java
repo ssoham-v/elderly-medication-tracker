@@ -76,11 +76,11 @@ public class MedicationScheduler {
     public static class CaregiverNotificationService {
         public static void dispatchMissedDoseAlert(String caregiverName, String patientName, MedicationItem med) {
             System.out.println("[CAREGIVER ALERT DISPATCHED]");
-            System.out.println("  -> Target: " + caregiverName);
+            System.out.println("  -> Target: " + caregiverName + " (+91 98765 43210)");
             System.out.println("  -> Urgent Notice: Patient " + patientName + " has not taken " 
                                + med.getName() + " (" + med.getDosage() + ") scheduled for " 
                                + med.getScheduledTime().format(DateTimeFormatter.ofPattern("hh:mm a")) + ".");
-            System.out.println("  -> Suggested Action: Check in via telephone or home visit.");
+            System.out.println("  -> Escalation Support: National Emergency 112 / Ambulance 108 / Elderline 14567");
         }
     }
 
