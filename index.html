@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CarePill - Accessible Medication Schedule Manager</title>
+  <meta name="description" content="A simple, accessible web application for elderly individuals to organize, track, and never miss daily medication schedules.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💊</text></svg>">
+</head>
+<body data-font-size="normal" data-theme="light">
+  <!-- Accessibility Toolbar -->
+  <aside class="a11y-bar" aria-label="Accessibility settings">
+    <div class="container a11y-container">
+      <div class="a11y-left">
+        <span class="a11y-label">Accessibility:</span>
+        <div class="font-controls" role="group" aria-label="Font size controls">
+          <button id="fontNormalBtn" class="a11y-btn active" title="Standard text size" aria-pressed="true">A</button>
+          <button id="fontLargeBtn" class="a11y-btn" title="Large text size" aria-pressed="false">A+</button>
+          <button id="fontXLargeBtn" class="a11y-btn" title="Extra large text size" aria-pressed="false">A++</button>
+        </div>
+        <button id="contrastToggle" class="a11y-btn contrast-btn" aria-pressed="false">
+          <span class="icon" aria-hidden="true">🌓</span> High Contrast
+        </button>
+      </div>
+
+      <div class="a11y-right">
+        <button id="readScheduleBtn" class="a11y-btn voice-btn" title="Read schedule aloud for vision assistance">
+          <span class="icon" aria-hidden="true">🔊</span> Speak Today's Schedule
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="container header-container">
+      <div class="brand-group">
+        <div class="app-logo" aria-hidden="true">💊</div>
+        <div>
+          <h1 class="app-title">CarePill</h1>
+          <p class="app-subtitle">Daily Medication Schedule & Healthcare Assistant</p>
+        </div>
+      </div>
+
+      <div class="header-datetime" aria-live="polite">
+        <div id="liveDate" class="live-date">Today</div>
+        <div id="liveClock" class="live-clock">00:00:00</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container main-content">
+    <!-- Adherence Summary Dashboard -->
+    <section class="summary-card" aria-labelledby="summaryHeading">
+      <div class="summary-header">
+        <h2 id="summaryHeading">Today's Progress</h2>
+        <span id="streakBadge" class="badge-streak">🔥 5 Day Streak!</span>
+      </div>
+
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar-bg" role="progressbar" id="progressBar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+          <div id="progressBarFill" class="progress-bar-fill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-stats">
+          <span id="adherenceText">0 of 0 medications taken</span>
+          <span id="adherencePercent" class="percent-label">0% Completed</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="action-buttons-grid">
+        <button id="openAddModalBtn" class="btn btn-primary">
+          <span class="btn-icon" aria-hidden="true">➕</span> Add New Medicine
+        </button>
+        <button id="openEmergencyBtn" class="btn btn-emergency">
+          <span class="btn-icon" aria-hidden="true">🚨</span> Emergency Contacts
+        </button>
+        <button id="openMultiLangBtn" class="btn btn-secondary">
+          <span class="btn-icon" aria-hidden="true">⚙️</span> System Architecture (Java / C++ / Python)
+        </button>
+      </div>
+    </section>
+
+    <!-- Drug-Drug Safety Alert Box (Dynamic) -->
+    <div id="safetyAlertBox" class="safety-banner" style="display: none;" role="alert">
+      <span class="safety-icon">⚠️</span>
+      <div class="safety-text" id="safetyAlertText">Drug interaction warning detected.</div>
+    </div>
+
+    <!-- Time Slot Groups -->
+    <section class="schedule-section" aria-label="Daily Medication Schedule">
+      <!-- Morning -->
+      <div class="time-slot-block" id="slot-morning">
+        <div class="slot-header morning">
+          <div class="slot-title-group">
+            <span class="slot-icon" aria-hidden="true">🌅</span>
+            <div>
+              <h3>Morning</h3>
+              <span class="slot-time">Recommended: 07:00 AM – 10:00 AM (With Breakfast)</span>
+            </div>
+          </div>
+          <span class="slot-count" id="count-morning">0 Pills</span>
+        </div>
+        <div class="med-cards-grid" id="cards-morning">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <!-- Afternoon -->
+      <div class="time-slot-block" id="slot-afternoon">
+        <div class="slot-header afternoon">
+          <div class="slot-title-group">
+            <span class="slot-icon" aria-hidden="true">☀️</span>
+            <div>
+              <h3>Afternoon</h3>
+              <span class="slot-time">Recommended: 12:00 PM – 02:00 PM (With Lunch)</span>
+            </div>
+          </div>
+          <span class="slot-count" id="count-afternoon">0 Pills</span>
+        </div>
+        <div class="med-cards-grid" id="cards-afternoon">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <!-- Evening -->
+      <div class="time-slot-block" id="slot-evening">
+        <div class="slot-header evening">
+          <div class="slot-title-group">
+            <span class="slot-icon" aria-hidden="true">🌆</span>
+            <div>
+              <h3>Evening</h3>
+              <span class="slot-time">Recommended: 06:00 PM – 08:00 PM (With Dinner)</span>
+            </div>
+          </div>
+          <span class="slot-count" id="count-evening">0 Pills</span>
+        </div>
+        <div class="med-cards-grid" id="cards-evening">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <!-- Bedtime -->
+      <div class="time-slot-block" id="slot-bedtime">
+        <div class="slot-header bedtime">
+          <div class="slot-title-group">
+            <span class="slot-icon" aria-hidden="true">🌙</span>
+            <div>
+              <h3>Bedtime / Night</h3>
+              <span class="slot-time">Recommended: 09:30 PM – 11:00 PM (Before Sleep)</span>
+            </div>
+          </div>
+          <span class="slot-count" id="count-bedtime">0 Pills</span>
+        </div>
+        <div class="med-cards-grid" id="cards-bedtime">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Health Tips for Seniors -->
+    <section class="tips-section" aria-labelledby="tipsHeading">
+      <h3 id="tipsHeading">💡 Friendly Health Reminder for Seniors</h3>
+      <p>Always drink a full glass of water with solid tablets unless instructed otherwise by your doctor. If you ever feel dizzy, sit down immediately and press the <strong>Emergency Contacts</strong> button above.</p>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="container footer-content">
+      <p><strong>CarePill Healthcare System</strong> • Designed with love for elderly care, accessibility, and medication adherence.</p>
+      <p class="repo-meta">Repository Size: &lt; 10 MB • Built with HTML5, CSS3, JavaScript, Java, C++, and Python.</p>
+    </div>
+  </footer>
+
+  <!-- MODAL 1: Add New Medication -->
+  <div id="addMedModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addMedTitle" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="addMedTitle">➕ Add Medication</h2>
+        <button id="closeAddModalBtn" class="close-btn" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <form id="addMedForm" class="modal-form">
+        <div class="form-group">
+          <label for="medName">Medicine Name <span class="required">*</span></label>
+          <input type="text" id="medName" required placeholder="e.g., Metformin, Lisinopril, Aspirin" autocomplete="off">
+          <small class="form-hint">Type clearly as written on your prescription bottle.</small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="medDosage">Dosage / Quantity <span class="required">*</span></label>
+            <input type="text" id="medDosage" required placeholder="e.g., 500 mg, 1 tablet, 2 drops">
+          </div>
+
+          <div class="form-group">
+            <label for="medSlot">Schedule Slot <span class="required">*</span></label>
+            <select id="medSlot" required>
+              <option value="morning">🌅 Morning (Breakfast)</option>
+              <option value="afternoon">☀️ Afternoon (Lunch)</option>
+              <option value="evening">🌆 Evening (Dinner)</option>
+              <option value="bedtime">🌙 Bedtime (Night)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="medTime">Scheduled Time</label>
+            <input type="time" id="medTime" value="08:00">
+          </div>
+
+          <div class="form-group">
+            <label for="medFood">Food Instruction</label>
+            <select id="medFood">
+              <option value="With or after food">🍽️ Take with or after food</option>
+              <option value="Before food (empty stomach)">⏰ Take before food (empty stomach)</option>
+              <option value="With a full glass of water">💧 Drink with a full glass of water</option>
+              <option value="Anytime">✨ Anytime</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="medPurpose">Purpose / Condition</label>
+            <input type="text" id="medPurpose" placeholder="e.g., Blood Pressure, Diabetes, Bone Health">
+          </div>
+
+          <div class="form-group">
+            <label for="medColor">Pill Badge Color</label>
+            <select id="medColor">
+              <option value="#2563eb">🔵 Blue</option>
+              <option value="#dc2626">🔴 Red</option>
+              <option value="#16a34a">🟢 Green</option>
+              <option value="#d97706">🟠 Orange</option>
+              <option value="#7c3aed">🟣 Purple</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="cancelAddModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save to Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Emergency Contacts -->
+  <div id="emergencyModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="emergencyTitle" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="emergencyTitle">🚨 Emergency Contacts & Caregiver Support</h2>
+        <button id="closeEmergencyBtn" class="close-btn" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <div class="emergency-list">
+        <div class="emergency-item urgent">
+          <div class="emergency-info">
+            <span class="emergency-role">Emergency Ambulance Hotline</span>
+            <span class="emergency-desc">Immediate medical emergency assistance</span>
+          </div>
+          <a href="tel:911" class="btn btn-emergency-dial">📞 Dial 911 / 112</a>
+        </div>
+
+        <div class="emergency-item">
+          <div class="emergency-info">
+            <span class="emergency-role">Primary Physician (Dr. Sarah Jenkins)</span>
+            <span class="emergency-desc">Clinic Hours: 9:00 AM – 5:00 PM</span>
+          </div>
+          <a href="tel:+15551234567" class="btn btn-contact-dial">📞 Call Doctor</a>
+        </div>
+
+        <div class="emergency-item">
+          <div class="emergency-info">
+            <span class="emergency-role">Primary Caregiver / Family (Alex)</span>
+            <span class="emergency-desc">Available 24/7 for support</span>
+          </div>
+          <a href="tel:+15559876543" class="btn btn-contact-dial">📞 Call Caregiver</a>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="closeEmergencyActionBtn" class="btn btn-primary" style="width: 100%;">Done / Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Multi-Language Architecture (Java, C++, Python, HTML/CSS) -->
+  <div id="multiLangModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="multiLangTitle" style="display: none;">
+    <div class="modal-box modal-large">
+      <div class="modal-header">
+        <h2 id="multiLangTitle">⚙️ Multi-Language Architecture & Core Engines</h2>
+        <button id="closeMultiLangBtn" class="close-btn" aria-label="Close dialog">&times;</button>
+      </div>
+
+      <p class="modal-intro">
+        CarePill utilizes a multi-disciplinary software architecture combining <strong>HTML5, CSS3, JavaScript, Java, C++, and Python</strong>. Every language fulfills a critical responsibility in this healthcare system:
+      </p>
+
+      <div class="lang-tabs" role="tablist">
+        <button class="lang-tab active" data-tab="tab-architecture">Overview</button>
+        <button class="lang-tab" data-tab="tab-python">Python (Analytics)</button>
+        <button class="lang-tab" data-tab="tab-cpp">C++ (Optimizer)</button>
+        <button class="lang-tab" data-tab="tab-java">Java (OOP Scheduler)</button>
+      </div>
+
+      <div class="lang-tab-content">
+        <!-- Architecture Overview -->
+        <div id="tab-architecture" class="tab-pane active">
+          <div class="arch-card">
+            <h4>🌐 1. Frontend Web Layer (HTML5, CSS3, JavaScript)</h4>
+            <p>Provides an elderly-centric UI with high-contrast accessibility (WCAG compliant), Web Speech API for voice assistance, and Web Audio API for harmonic cues.</p>
+          </div>
+          <div class="arch-card">
+            <h4>🐍 2. Data & Adherence Analytics (Python 3)</h4>
+            <p>Located in <code>python/adherence_analytics.py</code>. Analyzes 7-day adherence patterns, calculates statistical risk for missed doses, and generates medical export reports.</p>
+          </div>
+          <div class="arch-card">
+            <h4>⚡ 3. High-Performance Schedule Optimizer (C++ 17)</h4>
+            <p>Located in <code>cpp/schedule_optimizer.cpp</code>. Employs conflict-resolution algorithms to ensure dangerous drug combinations have safe timing separation intervals.</p>
+          </div>
+          <div class="arch-card">
+            <h4>☕ 4. Object-Oriented Scheduler Service (Java 17)</h4>
+            <p>Located in <code>java/MedicationScheduler.java</code>. Provides robust enterprise OOP models for dosages, schedule slots, recurring reminder triggers, and caregiver notification payloads.</p>
+          </div>
+        </div>
+
+        <!-- Python Code View -->
+        <div id="tab-python" class="tab-pane">
+          <p class="code-desc">Python Engine (<code>python/adherence_analytics.py</code>) - Computes compliance rates and risk metrics:</p>
+          <pre class="code-block"><code>def calculate_adherence(medication_history: list) -> dict:
+    total_scheduled = len(medication_history)
+    taken_on_time = sum(1 for entry in medication_history if entry.get("status") == "TAKEN")
+    adherence_rate = (taken_on_time / total_scheduled) * 100 if total_scheduled > 0 else 0.0
+    return {
+        "total_scheduled": total_scheduled,
+        "taken_on_time": taken_on_time,
+        "adherence_percentage": round(adherence_rate, 2),
+        "status": "EXCELLENT" if adherence_rate >= 85 else "NEEDS_ATTENTION"
+    }</code></pre>
+        </div>
+
+        <!-- C++ Code View -->
+        <div id="tab-cpp" class="tab-pane">
+          <p class="code-desc">C++ Engine (<code>cpp/schedule_optimizer.cpp</code>) - Detects drug interaction conflicts:</p>
+          <pre class="code-block"><code>struct MedicationConflictChecker {
+    bool hasInteractionConflict(const std::string& medA, const std::string& medB) {
+        // High-performance hash lookup for known dangerous combinations
+        static const std::unordered_set&lt;std::string&gt; conflictPairs = {
+            "aspirin+warfarin", "warfarin+aspirin",
+            "ibuprofen+aspirin", "aspirin+ibuprofen"
+        };
+        std::string key = toLower(medA) + "+" + toLower(medB);
+        return conflictPairs.find(key) != conflictPairs.end();
+    }
+};</code></pre>
+        </div>
+
+        <!-- Java Code View -->
+        <div id="tab-java" class="tab-pane">
+          <p class="code-desc">Java Engine (<code>java/MedicationScheduler.java</code>) - Object-oriented domain model:</p>
+          <pre class="code-block"><code>public class MedicationScheduler {
+    public static class DoseRecord {
+        private String medicineId;
+        private LocalDateTime scheduledTime;
+        private boolean isTaken;
+
+        public DoseRecord(String medicineId, LocalDateTime scheduledTime) {
+            this.medicineId = medicineId;
+            this.scheduledTime = scheduledTime;
+            this.isTaken = false;
+        }
+
+        public void markTaken() { this.isTaken = true; }
+        public boolean isOverdue() {
+            return !isTaken && LocalDateTime.now().isAfter(scheduledTime.plusHours(1));
+        }
+    }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="closeMultiLangActionBtn" class="btn btn-primary" style="width: 100%;">Close Architecture View</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
